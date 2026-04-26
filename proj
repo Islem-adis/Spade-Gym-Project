@@ -1,0 +1,4664 @@
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── DATA ────────────────────────────────────────────────────
+  const seed = [
+    { id:1, name:'HIIT Blast',              trainer:'Karim Mansouri', day:'Monday',    time:'18:00', duration:45, difficulty:'Advanced',    capacity:20 },
+    { id:2, name:'Pilates Core',            trainer:'Sara Benali',    day:'Tuesday',   time:'10:00', duration:55, difficulty:'Beginner',     capacity:15 },
+    { id:3, name:'Boxing Fundamentals',     trainer:'Yacine Ferhat',  day:'Wednesday', time:'17:00', duration:60, difficulty:'Intermediate', capacity:18 },
+    { id:4, name:'CrossFit WOD',            trainer:'Karim Mansouri', day:'Thursday',  time:'06:30', duration:60, difficulty:'Advanced',    capacity:20 },
+    { id:5, name:'Strength & Conditioning', trainer:'Yacine Ferhat',  day:'Friday',    time:'17:30', duration:75, difficulty:'Advanced',    capacity:15 },
+    { id:6, name:'Kickboxing',              trainer:'Yacine Ferhat',  day:'Saturday',  time:'11:00', duration:60, difficulty:'Intermediate', capacity:18 },
+    { id:7, name:'Sunday Stretch',          trainer:'Lina Chouiref',  day:'Sunday',    time:'10:00', duration:45, difficulty:'Beginner',     capacity:25 },
+  ];
+  const load = () => JSON.parse(localStorage.getItem('gym_classes') || 'null') || seed;
+  const save = d  => localStorage.setItem('gym_classes', JSON.stringify(d));
+
+  let classes = load();
+  if (!localStorage.getItem('gym_classes')) save(classes);
+
+
+  // ── RENDER ──────────────────────────────────────────────────
+  function render() {
+    document.getElementById('classes-tbody').innerHTML = classes.map(c => `
+      <tr>
+        <td>${c.name}</td><td>${c.trainer}</td><td>${c.day}</td><td>${c.time}</td>
+        <td>${c.duration} min</td>
+        <td><span class="badge badge-${c.difficulty.toLowerCase()}">${c.difficulty}</span></td>
+        <td>${c.capacity}</td>
+        <td>
+          <button class="btn btn-xs btn-edit"   onclick="editClass(${c.id})">✏️ Edit</button>
+          <button class="btn btn-xs btn-delete" onclick="delClass(${c.id})">🗑️ Delete</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  // ── ADD ─────────────────────────────────────────────────────
+  document.getElementById('add-class-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const name    = document.getElementById('c-name').value.trim();
+    const trainer = document.getElementById('c-trainer').value;
+    const day     = document.getElementById('c-day').value;
+    const time    = document.getElementById('c-time').value;
+    if (!name || !time) { alert('Name and Time are required.'); return; }
+
+    // Duplicate check: same trainer + day + time
+    if (classes.some(c => c.trainer === trainer && c.day === day && c.time === time)) {
+      alert('Duplicate! This trainer already has a class on that day and time.'); return;
+    }
+
+    classes.unshift({ id: Date.now(), name, trainer, day, time,
+      duration:   parseInt(document.getElementById('c-duration').value)  || 60,
+      difficulty: document.getElementById('c-diff').value,
+      capacity:   parseInt(document.getElementById('c-capacity').value)  || 20 });
+    save(classes); this.reset(); render();
+  });
+
+  // ── DELETE ──────────────────────────────────────────────────
+  window.delClass = id => {
+    if (!confirm('Delete this class?')) return;
+    classes = classes.filter(c => c.id !== id);
+    save(classes); render();
+  };
+
+  // ── EDIT MODAL ──────────────────────────────────────────────
+  window.editClass = id => {
+    const c = classes.find(c => c.id === id);
+    const ov = document.createElement('div');
+    ov.id = 'class-ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;overflow-y:auto;';
+    const days      = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    const diffs     = ['Beginner','Intermediate','Advanced'];
+    const trainers  = ['Karim Mansouri','Sara Benali','Yacine Ferhat','Lina Chouiref','Amira Khelifi','Bilal Tabet'];
+    const sel = (opts, val) => opts.map(o=>`<option ${o===val?'selected':''}>${o}</option>`).join('');
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:12px;padding:2rem;width:90%;max-width:460px;position:relative;margin:2rem auto;">
+        <button onclick="document.getElementById('class-ov').remove()"
+          style="position:absolute;top:0.75rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;">✕</button>
+        <h3 style="margin-bottom:1rem;font-family:'Oswald',sans-serif;color:#2a2f45;">Edit Class</h3>
+        <div style="display:grid;gap:0.6rem;">
+          <input  id="ec-name"     value="${c.name}"     style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+          <select id="ec-trainer"  style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">${sel(trainers,c.trainer)}</select>
+          <select id="ec-day"      style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">${sel(days,c.day)}</select>
+          <input  id="ec-time"     type="time" value="${c.time}"     style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+          <input  id="ec-duration" type="number" value="${c.duration}" style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+          <select id="ec-diff"     style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">${sel(diffs,c.difficulty)}</select>
+          <input  id="ec-capacity" type="number" value="${c.capacity}" style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+        </div>
+        <div style="margin-top:1rem;display:flex;gap:0.75rem;">
+          <button onclick="saveClass(${id})" class="btn btn-accent btn-sm">💾 Save</button>
+          <button onclick="document.getElementById('class-ov').remove()" class="btn btn-outline-admin btn-sm">Cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { ov.remove(); document.removeEventListener('keydown', esc); }
+    });
+  };
+
+  window.saveClass = id => {
+    const i = classes.findIndex(c => c.id === id);
+    classes[i] = { ...classes[i],
+      name:       document.getElementById('ec-name').value.trim(),
+      trainer:    document.getElementById('ec-trainer').value,
+      day:        document.getElementById('ec-day').value,
+      time:       document.getElementById('ec-time').value,
+      duration:   parseInt(document.getElementById('ec-duration').value) || 60,
+      difficulty: document.getElementById('ec-diff').value,
+      capacity:   parseInt(document.getElementById('ec-capacity').value) || 20 };
+    save(classes);
+    document.getElementById('class-ov').remove();
+    render();
+  };
+
+  render();
+});
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classes — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar" aria-label="Admin Sidebar Navigation">
+      <div class="sidebar-header">
+        <span class="logo-icon">&#9824;</span>
+        <span class="sidebar-brand">Spade GYM</span>
+        <span class="sidebar-label">Admin</span>
+      </div>
+      <nav aria-label="Admin Navigation">
+        <ul class="sidebar-nav">
+          <li><a href="admin-dashboard.html" class="sidebar-link">🏠 Dashboard</a></li>
+          <li><a href="admin-member.html"                    class="sidebar-link">👥 Members</a></li>
+          <li><a href="admin-classes.html"   class="sidebar-link active">📅 Classes</a></li>
+          <li><a href="#"                    class="sidebar-link">💳 Subscriptions</a></li>
+          <li><a href="admin-plans.html"     class="sidebar-link">📋 Plans</a></li>
+          <li><a href="#"                    class="sidebar-link">🏋️ Trainers</a></li>
+          <li><a href="#"                    class="sidebar-link">✉️ Messages <span class="badge-count">12</span></a></li>
+        </ul>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="index.html"       class="sidebar-link">🌐 View Site</a>
+        <a href="admin-login.html" class="sidebar-link sidebar-logout">🚪 Logout</a>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="admin-main" id="admin-content">
+
+      <header class="admin-topbar">
+        <button class="admin-menu-toggle" aria-label="Toggle sidebar">☰</button>
+        <h1 class="admin-page-title">Class Schedule Manager</h1>
+        <div class="admin-topbar-right">
+          <span class="admin-user-info">👤 Admin — superadmin</span>
+        </div>
+      </header>
+
+      <!-- TABLE -->
+      <section class="admin-section" aria-labelledby="classes-heading">
+        <h2 id="classes-heading" class="admin-section-title">All Classes</h2>
+        <div class="admin-card">
+          <div class="admin-card-header"><span>Weekly Schedule</span></div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <caption class="sr-only">Class schedule with actions</caption>
+              <thead>
+                <tr>
+                  <th>#</th><th>Class Name</th><th>Trainer</th><th>Day</th>
+                  <th>Time</th><th>Duration</th><th>Difficulty</th><th>Capacity</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="classes-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADD FORM -->
+      <section class="admin-section" aria-labelledby="add-class-heading">
+        <h2 id="add-class-heading" class="admin-section-title">Add New Class</h2>
+        <div class="admin-card">
+          <form id="add-class-form" class="admin-form" novalidate>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="c-name">Class Name <span class="required">*</span></label>
+                <input id="c-name" type="text" placeholder="e.g. Yoga Flow" required />
+              </div>
+              <div class="form-group">
+                <label for="c-trainer">Trainer <span class="required">*</span></label>
+                <select id="c-trainer">
+                  <option>Karim Mansouri</option><option>Sara Benali</option>
+                  <option>Yacine Ferhat</option><option>Lina Chouiref</option>
+                  <option>Amira Khelifi</option><option>Bilal Tabet</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="c-day">Day <span class="required">*</span></label>
+                <select id="c-day">
+                  <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+                  <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="c-time">Time <span class="required">*</span></label>
+                <input id="c-time" type="time" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="c-duration">Duration (min)</label>
+                <input id="c-duration" type="number" placeholder="60" min="10" />
+              </div>
+              <div class="form-group">
+                <label for="c-diff">Difficulty</label>
+                <select id="c-diff">
+                  <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="c-capacity">Capacity</label>
+                <input id="c-capacity" type="number" placeholder="20" min="1" />
+              </div>
+            </div>
+            <div class="form-submit">
+              <button type="submit" class="btn btn-accent">➕ Add Class</button>
+              <button type="reset"  class="btn btn-outline-admin">Clear</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+    <script src="admin-class.js"></script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-body">
+
+  <div class="admin-layout">
+
+    <!-- ====== ADMIN SIDEBAR ====== -->
+    <aside class="admin-sidebar" aria-label="Admin Sidebar Navigation">
+      <div class="sidebar-header">
+        <span class="logo-icon">&#9824;</span>
+        <span class="sidebar-brand">Spade GYM</span>
+        <span class="sidebar-label">Admin</span>
+      </div>
+
+      <nav aria-label="Admin Navigation">
+        <ul class="sidebar-nav">
+          <li><a href="admin-dashboard.html" class="sidebar-link active">🏠 Dashboard</a></li>
+          <li><a href="admin-member.html" class="sidebar-link">👥 Members</a></li>
+          <li><a href="admin-classes.html" class="sidebar-link">📅 Classes</a></li>
+          <li><a href="#" class="sidebar-link">💳 Subscriptions</a></li>
+          <li><a href="admin-plans.html" class="sidebar-link">📋 Plans</a></li>
+          <li><a href="#" class="sidebar-link">🏋️ Trainers</a></li>
+          <li><a href="#" class="sidebar-link">✉️ Messages <span class="badge-count">12</span></a></li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="index.html" class="sidebar-link">🌐 View Site</a>
+        <a href="admin-login.html" class="sidebar-link sidebar-logout">🚪 Logout</a>
+      </div>
+    </aside>
+
+    <!-- ====== ADMIN MAIN CONTENT ====== -->
+    <main class="admin-main" >
+
+      <!-- TOP BAR -->
+      <header class="admin-topbar">
+        <button class="admin-menu-toggle" aria-label="Toggle sidebar">☰</button>
+        <h1 class="admin-page-title">Dashboard</h1>
+        <div class="admin-topbar-right">
+          <span class="admin-user-info">👤 Admin — superadmin</span>
+        </div>
+      </header>
+
+      <!-- STATS CARDS -->
+      <section class="admin-section" aria-labelledby="stats-heading">
+        <h2 id="stats-heading" class="admin-section-title">Overview</h2>
+        <div class="stats-grid">
+
+          <div class="stat-card stat-blue">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <span class="stat-number">148</span>
+              <span >Total Members</span>
+            </div>
+          </div>
+
+          <div class="stat-card stat-green">
+            <div class="stat-icon">💳</div>
+            <div class="stat-info">
+              <span class="stat-number">86</span>
+              <span class="stat-label">Active Subscriptions</span>
+            </div>
+          </div>
+
+          <div class="stat-card stat-orange">
+            <div class="stat-icon">📅</div>
+            <div class="stat-info">
+              <span class="stat-number">7</span>
+              <span class="stat-label">Classes Today</span>
+            </div>
+          </div>
+
+          <div class="stat-card stat-red">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <span class="stat-number">212,500</span>
+              <span class="stat-label">Revenue This Month (DZD)</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- RECENT REGISTRATIONS TABLE -->
+      <section class="admin-section" aria-labelledby="recent-heading">
+        <h2 id="recent-heading" class="admin-section-title">Recent Registrations</h2>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <span>Last 5 New Members</span>
+            <a href="admin-member.html" class="btn btn-sm btn-outline-admin">View All</a>
+          </div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <caption class="sr-only">Recent member registrations</caption>
+              <thead>
+                <tr>
+                  <th ></th>
+                  <th >Full Name</th>
+                  <th >Email</th>
+                  <th >Plan</th>
+                  <th >Join Date</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      
+      const members = JSON.parse(localStorage.getItem('gym_members') || 'null') || seed;
+      const last5   = [...members].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+      const tbody   = document.getElementById('dashboard-tbody');
+      tbody.innerHTML = last5.map((m, i) => `<tr>
+        <td>${i + 1}</td>
+        <td>${m.name}</td>
+        <td>${m.email}</td>
+        <td><span class="badge badge-${m.plan.toLowerCase()}">${m.plan}</span></td>
+        <td>${m.date}</td>
+      </tr>`).join('');
+    })();
+  </script>
+
+    <script src="admin-stats.js"></script>
+
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-body admin-login-page">
+
+  <main class="login-main">
+    <div class="login-card">
+
+      <!-- LOGO -->
+      <div class="login-logo">
+        <a href="index.html" class="nav-logo">
+          <span class="logo-icon">	&#9824;</span> Spade GYM
+        </a>
+        <p class="login-subtitle">Admin Control Panel</p>
+      </div>
+
+      <!-- ERROR MESSAGE PLACEHOLDER -->
+      <div class="alert alert-error" id="login-error" role="alert" aria-live="polite" hidden>
+        ❌ Invalid username or password. Please try again.
+      </div>
+
+      <!-- SUCCESS MESSAGE PLACEHOLDER -->
+      <div class="alert alert-success" id="login-success" role="alert" aria-live="polite" hidden>
+        ✅ Login successful. Redirecting...
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form class="login-form" action="admin-dashboard.html" method="POST" novalidate>
+
+        <div class="form-group">
+          <label for="admin-username">Username</label>
+          <input
+            type="text"
+            id="admin-username"
+            name="username"
+            placeholder="Enter admin username"
+            required
+            autofocus
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="admin-password">Password</label>
+          <input
+            type="password"
+            id="admin-password"
+            name="password"
+            placeholder="Enter your password"
+            required
+            autocomplete="current-password"
+          />
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remember" id="remember" />
+            <span class="checkbox-custom"></span>
+            Remember me
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-accent btn-full btn-lg">Login to Dashboard</button>
+
+      </form>
+
+      <div class="login-footer-links">
+        <a href="index.html">← Return to Main Site</a>
+        <a href="#">Forgot Password?</a>
+      </div>
+
+    </div>
+  </main>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Members — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar" aria-label="Admin Sidebar Navigation">
+      <div class="sidebar-header">
+        <span class="logo-icon">&#9824;</span>
+        <span class="sidebar-brand">Spade GYM</span>
+        <span class="sidebar-label">Admin</span>
+      </div>
+      <nav aria-label="Admin Navigation">
+        <ul class="sidebar-nav">
+          <li><a href="admin-dashboard.html" class="sidebar-link">🏠 Dashboard</a></li>
+          <li><a href="admin-member.html"    class="sidebar-link active">👥 Members</a></li>
+          <li><a href="admin-classes.html"   class="sidebar-link">📅 Classes</a></li>
+          <li><a href="#"                    class="sidebar-link">💳 Subscriptions</a></li>
+          <li><a href="admin-plans.html"     class="sidebar-link">📋 Plans</a></li>
+          <li><a href="#"                    class="sidebar-link">🏋️ Trainers</a></li>
+          <li><a href="#"                    class="sidebar-link">✉️ Messages <span class="badge-count">12</span></a></li>
+        </ul>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="index.html"       class="sidebar-link">🌐 View Site</a>
+        <a href="admin-login.html" class="sidebar-link sidebar-logout">🚪 Logout</a>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="admin-main" id="admin-content">
+
+      <header class="admin-topbar">
+        <button class="admin-menu-toggle" aria-label="Toggle sidebar">☰</button>
+        <h1 class="admin-page-title">Members</h1>
+        <div class="admin-topbar-right">
+          <span class="admin-user-info">👤 Admin — superadmin</span>
+        </div>
+      </header>
+
+      <!-- MEMBERS TABLE -->
+      <section class="admin-section" aria-labelledby="recent-heading">
+        <h2 id="recent-heading" class="admin-section-title">All Members</h2>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <span>Members List</span>
+          </div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <caption class="sr-only">All gym members with management actions</caption>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Full Name</th>
+                  <th>Email</th>
+                  <th>Plan</th>
+                  <th>Join Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="admin-member.js"></script>
+</body>
+</html>
+
+// admin-members.js — Admin Feature 1: Member Management
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── DATA & STATE ────────────────────────────────────────────
+  const seed = [
+    { id:1,  name:'Hamza Bouzid',      email:'hamza@gmail.com',       phone:'0550001111', plan:'Gold',   date:'2026-03-11' },
+    { id:2,  name:'Nadia Berrah',      email:'nadia@gmail.com',       phone:'0550002222', plan:'Silver', date:'2026-03-11' },
+    { id:3,  name:'Riad Ouahmed',      email:'riad@gmail.com',        phone:'0550003333', plan:'Bronze', date:'2026-03-09' },
+    { id:4,  name:'Yasmine Saadi',     email:'yasmine@gmail.com',     phone:'0550004444', plan:'Silver', date:'2026-03-08' },
+    { id:5,  name:'Mourad Chali',      email:'mourad@gmail.com',      phone:'0550005555', plan:'Gold',   date:'2026-03-01' },
+    { id:6,  name:'Lyes Amrani',       email:'lyes@gmail.com',        phone:'0550006666', plan:'Bronze', date:'2026-02-25' },
+    { id:7,  name:'Souad Benmalek',    email:'souad@gmail.com',       phone:'0550007777', plan:'Silver', date:'2026-02-22' },
+    { id:8,  name:'Karim Zidane',      email:'karimz@gmail.com',      phone:'0550008888', plan:'Gold',   date:'2026-02-20' },
+    { id:9,  name:'Amina Touati',      email:'amina@gmail.com',       phone:'0550009999', plan:'Bronze', date:'2026-02-18' },
+    { id:10, name:'Fares Boukhelif',   email:'fares@gmail.com',       phone:'0550010101', plan:'Silver', date:'2026-02-15' },
+    { id:11, name:'Meriem Hadjadj',    email:'meriem@gmail.com',      phone:'0550011111', plan:'Gold',   date:'2026-02-10' },
+    { id:12, name:'Walid Kaci',        email:'walid@gmail.com',       phone:'0550012121', plan:'Bronze', date:'2026-02-08' },
+    { id:13, name:'Sara Messaoud',     email:'sara.m@gmail.com',      phone:'0550013131', plan:'Silver', date:'2026-02-05' },
+    { id:14, name:'Billel Ferdi',      email:'billel@gmail.com',      phone:'0550014141', plan:'Bronze', date:'2026-02-01' },
+    { id:15, name:'Houda Larbi',       email:'houda@gmail.com',       phone:'0550015151', plan:'Gold',   date:'2026-01-28' },
+    { id:16, name:'Nassim Belhout',    email:'nassim@gmail.com',      phone:'0550016161', plan:'Silver', date:'2026-01-25' },
+    { id:17, name:'Imane Redjimi',     email:'imane@gmail.com',       phone:'0550017171', plan:'Bronze', date:'2026-01-20' },
+    { id:18, name:'Youssef Ghoul',     email:'youssef@gmail.com',     phone:'0550018181', plan:'Gold',   date:'2026-01-15' },
+    { id:19, name:'Chaima Belaid',     email:'chaima@gmail.com',      phone:'0550019191', plan:'Silver', date:'2026-01-10' },
+    { id:20, name:'Rachid Bensalem',   email:'rachid@gmail.com',      phone:'0550020202', plan:'Bronze', date:'2026-01-05' },
+    { id:21, name:'Djamel Beloufa',    email:'djamel@gmail.com',      phone:'0550021212', plan:'Gold',   date:'2026-01-03' },
+    { id:22, name:'Farida Azzoug',     email:'farida@gmail.com',      phone:'0550022222', plan:'Silver', date:'2025-12-28' },
+    { id:23, name:'Sofiane Meddah',    email:'sofiane@gmail.com',     phone:'0550023232', plan:'Bronze', date:'2025-12-25' },
+    { id:24, name:'Rania Bouri',       email:'rania@gmail.com',       phone:'0550024242', plan:'Silver', date:'2025-12-20' },
+    { id:25, name:'Khaled Hamdi',      email:'khaled@gmail.com',      phone:'0550025252', plan:'Gold',   date:'2025-12-18' },
+    { id:26, name:'Lynda Cherif',      email:'lynda@gmail.com',       phone:'0550026262', plan:'Bronze', date:'2025-12-15' },
+    { id:27, name:'Amine Boudraa',     email:'amine@gmail.com',       phone:'0550027272', plan:'Silver', date:'2025-12-10' },
+    { id:28, name:'Dalila Mansouri',   email:'dalila@gmail.com',      phone:'0550028282', plan:'Gold',   date:'2025-12-08' },
+    { id:29, name:'Tarek Benaissa',    email:'tarek@gmail.com',       phone:'0550029292', plan:'Bronze', date:'2025-12-05' },
+    { id:30, name:'Sabrina Oukaci',    email:'sabrina@gmail.com',     phone:'0550030303', plan:'Silver', date:'2025-12-01' },
+    { id:31, name:'Hichem Belkacemi',  email:'hichem@gmail.com',      phone:'0550031313', plan:'Gold',   date:'2025-11-28' },
+    { id:32, name:'Nawal Benali',      email:'nawal@gmail.com',       phone:'0550032323', plan:'Bronze', date:'2025-11-25' },
+    { id:33, name:'Adel Tlemcani',     email:'adel@gmail.com',        phone:'0550033333', plan:'Silver', date:'2025-11-20' },
+    { id:34, name:'Zineb Slimani',     email:'zineb@gmail.com',       phone:'0550034343', plan:'Bronze', date:'2025-11-18' },
+    { id:35, name:'Omar Boucherit',    email:'omar@gmail.com',        phone:'0550035353', plan:'Gold',   date:'2025-11-15' },
+    { id:36, name:'Asma Rahmani',      email:'asma@gmail.com',        phone:'0550036363', plan:'Silver', date:'2025-11-10' },
+    { id:37, name:'Samy Bendjemaa',    email:'samy@gmail.com',        phone:'0550037373', plan:'Bronze', date:'2025-11-08' },
+    { id:38, name:'Wafa Hadj Ali',     email:'wafa@gmail.com',        phone:'0550038383', plan:'Gold',   date:'2025-11-05' },
+    { id:39, name:'Ryad Merabtine',    email:'ryad@gmail.com',        phone:'0550039393', plan:'Silver', date:'2025-11-01' },
+    { id:40, name:'Lila Bouziane',     email:'lila@gmail.com',        phone:'0550040404', plan:'Bronze', date:'2025-10-28' },
+    { id:41, name:'Mounir Laib',       email:'mounir@gmail.com',      phone:'0550041414', plan:'Gold',   date:'2025-10-25' },
+    { id:42, name:'Samia Guendouz',    email:'samia@gmail.com',       phone:'0550042424', plan:'Silver', date:'2025-10-20' },
+    { id:43, name:'Anis Benabdallah',  email:'anis@gmail.com',        phone:'0550043434', plan:'Bronze', date:'2025-10-18' },
+    { id:44, name:'Kahina Idir',       email:'kahina@gmail.com',      phone:'0550044444', plan:'Silver', date:'2025-10-15' },
+    { id:45, name:'Mehdi Bouaza',      email:'mehdi@gmail.com',       phone:'0550045454', plan:'Gold',   date:'2025-10-10' },
+    { id:46, name:'Nawel Tabet',       email:'nawel@gmail.com',       phone:'0550046464', plan:'Bronze', date:'2025-10-08' },
+    { id:47, name:'Islem Bouraiou',    email:'islem@gmail.com',       phone:'0550047474', plan:'Silver', date:'2025-10-05' },
+    { id:48, name:'Ayoub Chabou',      email:'ayoub@gmail.com',       phone:'0550048484', plan:'Gold',   date:'2025-10-01' },
+    { id:49, name:'Siham Meziane',     email:'siham@gmail.com',       phone:'0550049494', plan:'Bronze', date:'2025-09-28' },
+    { id:50, name:'Lotfi Gherbi',      email:'lotfi@gmail.com',       phone:'0550050505', plan:'Silver', date:'2025-09-25' },
+    { id:51, name:'Cylia Boussaha',    email:'cylia@gmail.com',       phone:'0550051515', plan:'Gold',   date:'2025-09-20' },
+    { id:52, name:'Badreddine Khaldi', email:'badreddine@gmail.com',  phone:'0550052525', plan:'Bronze', date:'2025-09-18' },
+    { id:53, name:'Lamia Ferhat',      email:'lamia@gmail.com',       phone:'0550053535', plan:'Silver', date:'2025-09-15' },
+    { id:54, name:'Zakaria Benali',    email:'zakaria@gmail.com',     phone:'0550054545', plan:'Gold',   date:'2025-09-10' },
+    { id:55, name:'Faiza Belarbi',     email:'faiza@gmail.com',       phone:'0550055555', plan:'Bronze', date:'2025-09-08' },
+    { id:56, name:'Yacine Benmoussa',  email:'yacine.b@gmail.com',    phone:'0550056565', plan:'Silver', date:'2025-09-05' },
+    { id:57, name:'Hafida Rekik',      email:'hafida@gmail.com',      phone:'0550057575', plan:'Gold',   date:'2025-09-01' },
+    { id:58, name:'Samir Chikhi',      email:'samir@gmail.com',       phone:'0550058585', plan:'Bronze', date:'2025-08-28' },
+    { id:59, name:'Nour El Houda Ait', email:'nour@gmail.com',        phone:'0550059595', plan:'Silver', date:'2025-08-25' },
+  ];
+  const load = () => JSON.parse(localStorage.getItem('gym_members') || 'null') || seed;
+  const save = d  => localStorage.setItem('gym_members', JSON.stringify(d));
+
+  let members = load();
+  let search = '', planFilter = 'All';
+  if (!localStorage.getItem('gym_members') || members.length < seed.length) { members = seed; save(members); }
+
+  // ── INJECT SEARCH + FILTER BAR ──────────────────────────────
+  const section = document.querySelector('.admin-section[aria-labelledby="recent-heading"]');
+  const bar = document.createElement('div');
+  bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;margin-bottom:1rem;';
+  bar.innerHTML = `
+    <input id="m-search" type="text" placeholder="🔍 Search name or email..."
+      style="padding:0.45rem 1rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.85rem;flex:1;min-width:180px;">
+    <div id="m-btns" style="display:flex;gap:0.4rem;">
+      ${['All','Bronze','Silver','Gold'].map((p,i)=>
+        `<button class="btn btn-xs ${i===0?'btn-accent':'btn-outline-admin'}" data-plan="${p}">${p}</button>`
+      ).join('')}
+    </div>
+    <span id="m-count" style="font-size:0.85rem;color:#7f8c8d;margin-left:auto;"></span>`;
+  section.querySelector('.admin-card').prepend(bar);
+
+  // ── INJECT ADD FORM ─────────────────────────────────────────
+  const addSec = document.createElement('section');
+  addSec.className = 'admin-section';
+  addSec.innerHTML = `
+    <h2 class="admin-section-title">Add New Member</h2>
+    <div class="admin-card"><form id="add-form" class="admin-form" style="padding:1.5rem;" novalidate>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="form-group"><label>Full Name</label><input id="m-name"  type="text"  placeholder="Full name" required></div>
+        <div class="form-group"><label>Email</label>    <input id="m-email" type="email" placeholder="email@example.com" required></div>
+        <div class="form-group"><label>Phone</label>    <input id="m-phone" type="text"  placeholder="+213 ..."></div>
+        <div class="form-group"><label>Plan</label>
+          <select id="m-plan"><option>Bronze</option><option>Silver</option><option>Gold</option></select></div>
+        <div class="form-group"><label>Join Date</label><input id="m-date" type="date"></div>
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:0.75rem;">
+        <button type="submit" class="btn btn-accent btn-sm">➕ Add Member</button>
+        <button type="reset"  class="btn btn-outline-admin btn-sm">Clear</button>
+      </div>
+    </form></div>`;
+  section.after(addSec);
+
+  // ── RENDER ──────────────────────────────────────────────────
+  function render() {
+    const q = search.toLowerCase();
+    const rows = members.filter(m =>
+      (planFilter === 'All' || m.plan === planFilter) &&
+      (m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
+    );
+    document.getElementById('m-count').textContent = `Showing ${rows.length} of ${members.length} members`;
+    document.querySelector('#recent-heading').closest('.admin-section').querySelector('tbody').innerHTML =
+      rows.length ? rows.map((m,i) => `<tr>
+        <td>${i + 1}</td><td>${m.name}</td><td>${m.email}</td>
+        <td><span class="badge badge-${m.plan.toLowerCase()}">${m.plan}</span></td>
+        <td>${m.date}</td>
+        <td>
+          <button class="btn btn-xs btn-edit"   onclick="editMember(${m.id})">✏️ Edit</button>
+          <button class="btn btn-xs btn-delete" onclick="delMember(${m.id})">🗑️ Delete</button>
+        </td></tr>`).join('')
+      : `<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:#7f8c8d;">No members found.</td></tr>`;
+  }
+
+  // ── EVENTS ──────────────────────────────────────────────────
+  document.getElementById('m-search').addEventListener('input', e => { search = e.target.value; render(); });
+  document.getElementById('m-btns').addEventListener('click', e => {
+    if (!e.target.dataset.plan) return;
+    planFilter = e.target.dataset.plan;
+    document.querySelectorAll('#m-btns button').forEach(b =>
+      b.className = `btn btn-xs ${b.dataset.plan === planFilter ? 'btn-accent' : 'btn-outline-admin'}`);
+    render();
+  });
+
+  document.getElementById('add-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const n  = document.getElementById('m-name').value.trim();
+    const em = document.getElementById('m-email').value.trim();
+    const ph = document.getElementById('m-phone').value.trim();
+    if (!n || !em) { alert('Name and Email required.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { alert('Please enter a valid email address.'); return; }
+    if (ph && !/^[0-9+\s\-()]{7,15}$/.test(ph)) { alert('Please enter a valid phone number.'); return; }
+    members.unshift({ id: Date.now(), name: n, email: em,
+      phone: ph || '—',
+      plan:  document.getElementById('m-plan').value,
+      date:  document.getElementById('m-date').value || new Date().toISOString().split('T')[0] });
+    save(members); this.reset(); render();
+  });
+
+  // ── DELETE ──────────────────────────────────────────────────
+  window.delMember = id => {
+    if (!confirm('Delete this member?')) return;
+    members = members.filter(m => m.id !== id);
+    save(members); render();
+  };
+
+  // ── EDIT MODAL ──────────────────────────────────────────────
+  window.editMember = id => {
+    const m = members.find(m => m.id === id);
+    const ov = document.createElement('div');
+    ov.id = 'edit-ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:12px;padding:2rem;width:90%;max-width:440px;position:relative;">
+        <button onclick="document.getElementById('edit-ov').remove()"
+          style="position:absolute;top:0.75rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;">✕</button>
+        <h3 style="margin-bottom:1rem;font-family:'Oswald',sans-serif;color:#2a2f45;">Edit Member</h3>
+        <div style="display:grid;gap:0.6rem;">
+          <input id="e-name"  value="${m.name}"  style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+          <input id="e-email" value="${m.email}" style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+          <input id="e-phone" value="${m.phone}" style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+          <select id="e-plan" style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+            ${['Bronze','Silver','Gold'].map(p=>`<option ${m.plan===p?'selected':''}>${p}</option>`).join('')}
+          </select>
+          <input id="e-date" type="date" value="${m.date}" style="padding:0.5rem;border:1px solid #ddd;border-radius:6px;">
+        </div>
+        <div style="margin-top:1rem;display:flex;gap:0.75rem;">
+          <button onclick="saveMember(${id})" class="btn btn-accent btn-sm">💾 Save</button>
+          <button onclick="document.getElementById('edit-ov').remove()" class="btn btn-outline-admin btn-sm">Cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { ov.remove(); document.removeEventListener('keydown', esc); }
+    });
+  };
+
+  window.saveMember = id => {
+    const i = members.findIndex(m => m.id === id);
+    members[i] = { ...members[i],
+      name:  document.getElementById('e-name').value.trim(),
+      email: document.getElementById('e-email').value.trim(),
+      phone: document.getElementById('e-phone').value.trim(),
+      plan:  document.getElementById('e-plan').value,
+      date:  document.getElementById('e-date').value };
+    save(members);
+    document.getElementById('edit-ov').remove();
+    render();
+  };
+
+  render();
+});
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plan Management — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-body">
+
+  <div class="admin-layout">
+
+    <!-- ADMIN SIDEBAR -->
+    <aside class="admin-sidebar" aria-label="Admin Sidebar Navigation">
+      <div class="sidebar-header">
+        <span class="logo-icon">&#9824;</span>
+        <span class="sidebar-brand">Spade GYM</span>
+        <span class="sidebar-label">Admin</span>
+      </div>
+      <nav aria-label="Admin Navigation">
+        <ul class="sidebar-nav">
+          <li><a href="admin-dashboard.html" class="sidebar-link">🏠 Dashboard</a></li>
+          <li><a href="admin-member.html" class="sidebar-link">👥 Members</a></li>
+          <li><a href="admin-classes.html" class="sidebar-link">📅 Classes</a></li>
+          <li><a href="#" class="sidebar-link">💳 Subscriptions</a></li>
+          <li><a href="admin-plans.html" class="sidebar-link active">📋 Plans</a></li>
+          <li><a href="#" class="sidebar-link">🏋️ Trainers</a></li>
+          <li><a href="#" class="sidebar-link">✉️ Messages <span class="badge-count">12</span></a></li>
+        </ul>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="index.html" class="sidebar-link">🌐 View Site</a>
+        <a href="admin-login.html" class="sidebar-link sidebar-logout">🚪 Logout</a>
+      </div>
+    </aside>
+
+    <!-- ADMIN MAIN CONTENT -->
+    <main class="admin-main" id="admin-content">
+
+      <header class="admin-topbar">
+        <button class="admin-menu-toggle" aria-label="Toggle sidebar">☰</button>
+        <h1 class="admin-page-title">Plan Management</h1>
+        <div class="admin-topbar-right">
+          <span class="admin-user-info">👤 Admin — superadmin</span>
+        </div>
+      </header>
+
+      <!-- EXISTING PLANS TABLE -->
+      <section class="admin-section" aria-labelledby="plans-list-heading">
+        <h2 id="plans-list-heading" class="admin-section-title">Current Membership Plans</h2>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <span>All Plans</span>
+          </div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <caption class="sr-only">Current membership plans with actions</caption>
+              <thead>
+                <tr>
+                  <th >ID</th>
+                  <th >Plan Name</th>
+                  <th >Price (DZD)</th>
+                  <th >Duration</th>
+                  <th >Features</th>
+                  <th >Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td><span class="badge badge-bronze">🥉 Bronze</span></td>
+                  <td>2,500</td>
+                  <td>1 Month</td>
+                  <td>Gym access, Cardio, 2 group classes</td>
+                  <td>
+                    <button type="button" class="btn btn-xs btn-edit">✏️ Edit</button>
+                    <button type="button" class="btn btn-xs btn-delete">🗑️ Delete</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td><span class="badge badge-silver">🥈 Silver</span></td>
+                  <td>5,500</td>
+                  <td>3 Months</td>
+                  <td>All Bronze + Pool, Sauna, 1 PT/month</td>
+                  <td>
+                    <button type="button" class="btn btn-xs btn-edit">✏️ Edit</button>
+                    <button type="button" class="btn btn-xs btn-delete">🗑️ Delete</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td><span class="badge badge-gold">🥇 Gold</span></td>
+                  <td>20,000</td>
+                  <td>12 Months</td>
+                  <td>All Silver + Unlimited PT, Nutrition, Guest passes</td>
+                  <td>
+                    <button type="button" class="btn btn-xs btn-edit">✏️ Edit</button>
+                    <button type="button" class="btn btn-xs btn-delete">🗑️ Delete</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADD NEW PLAN FORM -->
+      <section class="admin-section" aria-labelledby="add-plan-heading">
+        <h2 id="add-plan-heading" class="admin-section-title">Add New Plan</h2>
+        <div class="admin-card">
+          <form class="admin-form" action="#" method="POST" novalidate>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="plan-name">Plan Name <span class="required"></span></label>
+                <input type="text" id="plan-name" name="plan_name" placeholder="e.g. Platinum" required />
+              </div>
+              <div class="form-group">
+                <label for="plan-price">Price (DZD) <span class="required"></span></label>
+                <input type="number" id="plan-price" name="price" placeholder="e.g. 35000" required min="0" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="plan-duration">Duration <span class="required">*</span></label>
+                <select id="plan-duration" name="duration" required>
+                  <option value="" disabled selected>Select duration</option>
+                  <option value="1">1 Month</option>
+                  <option value="3">3 Months</option>
+                  <option value="6">6 Months</option>
+                  <option value="12">12 Months</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="plan-description">Description <span class="required"></span></label>
+              <textarea id="plan-description" name="description" rows="3" placeholder="Describe what is included in this plan..." required></textarea>
+            </div>
+
+            <div class="form-submit">
+              <button type="submit" class="btn btn-accent">➕ Add Plan</button>
+              <button type="reset" class="btn btn-outline-admin">Clear</button>
+            </div>
+
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+
+</body>
+</html>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── READ DATA FROM localStorage ─────────────────────────────
+  const members = JSON.parse(localStorage.getItem('gym_members') || '[]');
+  const classes = JSON.parse(localStorage.getItem('gym_classes') || '[]');
+
+  // ── CALCULATE STATS ─────────────────────────────────────────
+  const total      = members.length;
+  const bronze     = members.filter(m => m.plan === 'Bronze').length;
+  const silver     = members.filter(m => m.plan === 'Silver').length;
+  const gold       = members.filter(m => m.plan === 'Gold').length;
+  const popular    = [['Bronze',bronze],['Silver',silver],['Gold',gold]].sort((a,b)=>b[1]-a[1])[0][0];
+  const perWeek    = classes.length;
+
+  // ── UPDATE STAT CARDS ───────────────────────────────────────
+  const cards = document.querySelectorAll('.stat-number');
+  if (cards[0]) cards[0].textContent = total;               // Total Members
+  if (cards[1]) cards[1].textContent = Math.round((silver + gold + bronze) * 0.75);
+  if (cards[2]) cards[2].textContent = perWeek;             // Classes per week
+//   if (cards[3]) cards[3].textContent = `⭐ ${popular}`;    // Most popular plan
+
+  // Fix the label of card[3] to say "Most Popular Plan"
+  const labels = document.querySelectorAll('.stat-label');
+  if (labels[3]) labels[3].textContent = 'Most Popular Plan';
+
+  // ── BAR CHART (Canvas) ──────────────────────────────────────
+  const chartSec = document.createElement('section');
+  chartSec.className = 'admin-section';
+  chartSec.innerHTML = `
+    <h2 class="admin-section-title">Members by Plan</h2>
+    <div class="admin-card" style="padding:1.5rem;">
+      <canvas id="plan-chart" height="180"></canvas>
+    </div>`;
+  document.querySelector('.admin-main').appendChild(chartSec);
+
+  // Draw bar chart using Canvas API (no libraries)
+  const canvas  = document.getElementById('plan-chart');
+  const ctx     = canvas.getContext('2d');
+  canvas.width  = canvas.parentElement.offsetWidth - 48;
+
+  const data    = [['Bronze', bronze, '#cd7f32'], ['Silver', silver, '#aaa9ad'], ['Gold', gold, '#ffd700']];
+  const max     = Math.max(...data.map(d => d[1]), 1);
+  const barW    = canvas.width / 5;
+  const gap     = (canvas.width - barW * 3) / 4;
+  const topPad  = 30;
+  const botPad  = 30;
+  const chartH  = canvas.height - topPad - botPad;
+
+  data.forEach(([label, val, color], i) => {
+    const x = gap + i * (barW + gap);
+    const h = (val / max) * chartH;
+    const y = topPad + (chartH - h);
+
+    // Bar
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, h, 6);
+    ctx.fill();
+
+    // Value on top
+    ctx.fillStyle = '#2a2f45';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(val, x + barW / 2, y - 8);
+
+    // Label below
+    ctx.fillStyle = '#7f8c8d';
+    ctx.font = '13px Arial';
+    ctx.fillText(label, x + barW / 2, topPad + chartH + 20);
+  });
+
+});
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classes — Spade Gym</title> 
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="navbar" aria-label="Main Navigation">
+      <a href="index.html" class="nav-logo" id="namelogo">
+        <span class="logo-icon" >	&#9824;</span> Spade GYM
+      </a>
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="classes.html" class="nav-link active">Classes</a></li>
+        <li><a href="membership.html" class="nav-link">Membership</a></li>
+        <li><a href="trainers.html" class="nav-link">Trainers</a></li>
+        <li><a href="contact.html" class="nav-link">Contact</a></li>
+        <li><a href="admin-login.html" class="nav-link nav-admin-btn">Admin</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- PAGE HEADER -->
+    <section class="page-hero" aria-label="Page Header">
+      <div class="container">
+        <h1>Our Classes</h1>
+        <p>From beginner-friendly sessions to advanced intensity training — find your perfect class.</p>
+      </div>
+    </section>
+
+    <!-- FILTER PLACEHOLDER (JS Part 3) -->
+    <section class="section filter-section" aria-label="Class Filters">
+      <div class="container">
+        <div class="filter-bar">
+         
+          <div class="filter-placeholder-controls">
+            <select disabled aria-label="Filter by Trainer">
+              <option>Filter by Trainer</option>
+            </select>
+            <select disabled aria-label="Filter by Day">
+              <option>Filter by Day</option>
+            </select>
+            <button class="btn btn-sm btn-outline" disabled>All</button>
+            <button class="btn btn-sm btn-outline" disabled>Beginner</button>
+            <button class="btn btn-sm btn-outline" disabled>Intermediate</button>
+            <button class="btn btn-sm btn-outline" disabled>Advanced</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CLASSES TABLE -->
+    <section class="section" aria-labelledby="schedule-heading">
+      <div class="container">
+        <h2 id="schedule-heading" class="section-title">Weekly Class Schedule</h2>
+        <div class="table-responsive">
+          <table class="data-table" id="classes-table">
+            <caption>Spade Gym — Full Weekly Class Schedule</caption>
+            <thead>
+              <tr>
+                <th >Class Name</th>
+                <th >Trainer</th>
+                <th >Day</th>
+                <th >Time</th>
+                <th >Duration</th>
+                <th >Difficulty</th>
+                <th >Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>HIIT Blast</td>
+                <td>Karim Mansouri</td>
+                <td>Monday</td>
+                <td>18:00</td>
+                <td>45 min</td>
+                <td><span class="badge badge-advanced">Advanced</span></td>
+                <td><a href="#" class="btn btn-xs btn-outline">View</a></td>
+              </tr>
+              <tr>
+                <td>Pilates Core</td>
+                <td>Sara Benali</td>
+                <td>Tuesday</td>
+                <td>10:00</td>
+                <td>55 min</td>
+                <td><span class="badge badge-beginner">Beginner</span></td>
+                <td><a href="#" class="btn btn-xs btn-outline">View</a></td>
+              </tr>
+              <tr>
+                <td>Boxing Fundamentals</td>
+                <td>Yacine Ferhat</td>
+                <td>Wednesday</td>
+                <td>17:00</td>
+                <td>60 min</td>
+                <td><span class="badge badge-intermediate">Intermediate</span></td>
+                <td><a href="#" class="btn btn-xs btn-outline">View</a></td>
+              </tr>
+              <tr>
+                <td>CrossFit WOD</td>
+                <td>Karim Mansouri</td>
+                <td>Thursday</td>
+                <td>06:30</td>
+                <td>60 min</td>
+                <td><span class="badge badge-advanced">Advanced</span></td>
+                <td><a href="#" class="btn btn-xs btn-outline">View</a></td>
+              </tr>
+              <tr>
+                <td>Strength &amp; Conditioning</td>
+                <td>Yacine Ferhat</td>
+                <td>Friday</td>
+                <td>17:30</td>
+                <td>75 min</td>
+                <td><span class="badge badge-advanced">Advanced</span></td>
+                <td><a href="#" class="btn btn-xs btn-outline">View</a></td>
+              </tr>
+              <tr>
+                <td>Kickboxing</td>
+                <td>Yacine Ferhat</td>
+                <td>Saturday</td>
+                <td>11:00</td>
+                <td>60 min</td>
+                <td><span class="badge badge-intermediate">Intermediate</span></td>
+                <td><a href="#" class="btn btn-xs btn-outline">View</a></td>
+              </tr>
+              <tr>
+                <td>Sunday Stretch</td>
+                <td>Lina Chouiref</td>
+                <td>Sunday</td>
+                <td>10:00</td>
+                <td>45 min</td>
+                <td><span class="badge badge-beginner">Beginner</span></td>
+                <td><a href="#" class="btn btn-xs btn-outline">View</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4 class="footer-heading"><span class="logo-icon" id="footer-logo">	&#9824;</span> Spade GYM</h4>
+          <p>Train hard. Live strong.</p>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="membership.html">Membership</a></li>
+            <li><a href="trainers.html">Trainers</a></li>
+            <li><a href="contact.html">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Contact</h4>
+          <address>
+            <p>📍 12 Rue des Athlètes, Constantine, Algeria</p>
+            <p>📞 +213 55 66 79 40</p>
+            <p>✉️ contact@spadegym.dz</p>
+          </address>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Spade Gym. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="filter-class.js"></script>
+
+    <script src="nav.js"></script>
+
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contact — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="navbar" aria-label="Main Navigation">
+      <a href="index.html" class="nav-logo" id="namelogo">
+        <span class="logo-icon" >	&#9824;</span> Spade GYM
+      </a>
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="classes.html" class="nav-link">Classes</a></li>
+        <li><a href="membership.html" class="nav-link">Membership</a></li>
+        <li><a href="trainers.html" class="nav-link">Trainers</a></li>
+        <li><a href="contact.html" class="nav-link active">Contact</a></li>
+        <li><a href="admin-login.html" class="nav-link nav-admin-btn">Admin</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- PAGE HEADER -->
+    <section class="page-hero" aria-label="Page Header">
+      <div class="container">
+        <h1>Contact Us</h1>
+        <p>Have a question or want to visit? We'd love to hear from you.</p>
+      </div>
+    </section>
+
+    <!-- CONTACT SECTION (2-column layout) -->
+    <section class="section contact-section" aria-labelledby="contact-heading">
+      <div class="container">
+        <h2 id="contact-heading" class="sr-only">Contact Form and Information</h2>
+        <div class="contact-layout">
+
+          <!-- CONTACT FORM -->
+          <div class="contact-form-col">
+            <h3>Send Us a Message</h3>
+            <form class="contact-form" action="#" method="POST" novalidate>
+
+              <div class="form-group">
+                <label for="contact-name">Your Name <span class="required"></span></label>
+                <input type="text" id="contact-name" name="name" placeholder="Your full name" required minlength="2" />
+              </div>
+
+              <div class="form-group">
+                <label for="contact-email">Email Address <span class="required"></span></label>
+                <input type="email" id="contact-email" name="email" placeholder="you@example.com" required  />
+              </div>
+
+              <div class="form-group">
+                <label for="contact-subject">Subject <span class="required"></span></label>
+                <input type="text" id="contact-subject" name="subject" placeholder="How can we help?" required minlength="5" />
+              </div>
+
+              <div class="form-group">
+                <label for="contact-message">Message <span class="required"></span></label>
+                <textarea id="contact-message" name="message" rows="5" placeholder="Write your message here (min. 20 characters)..." required minlength="20"></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-accent btn-full">Send Message</button>
+            </form>
+          </div>
+
+          <!-- GYM INFO -->
+          <div class="contact-info-col">
+            <h3>Find Us</h3>
+
+            <address class="gym-address">
+              <div class="contact-detail">
+                <span class="contact-icon">📍</span>
+                <div>
+                  <strong>Address</strong>
+                  <p>12 Rue des Athlètes<br />Constantine 25000, Algeria</p>
+                </div>
+              </div>
+              <div class="contact-detail">
+                <span class="contact-icon">📞</span>
+                <div>
+                  <strong>Phone</strong>
+                  <p><a>+213 55 66 79 40</a></p>
+                </div>
+              </div>
+              <div class="contact-detail">
+                <span class="contact-icon">✉️</span>
+                <div>
+                  <strong>Email</strong>
+                  <p><a href="mailto:contact@spadegym.dz">contact@spadegym.dz</a></p>
+                </div>
+              </div>
+            </address>
+
+            <!-- EMBEDDED MAP PLACEHOLDER -->
+            <div class="map-placeholder" role="img" aria-label="Map placeholder — Google Maps will be embedded here">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2954.1777716929714!2d6.574471737764138!3d36.235409659859194!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x12f1650023de1a59%3A0x40290e29d3b3ef66!2sPower%20fitness%20Constantine!5e1!3m2!1sen!2sdz!4v1775982656655!5m2!1sen!2sdz"
+                width="100%"
+                height="220"
+                style="border:0;"
+                loading="lazy"
+                allowfullscreen=""
+                aria-label="Gym location map placeholder">
+              </iframe>
+
+            </div>
+
+            <!-- OPENING HOURS TABLE -->
+            <div class="hours-section">
+              <h4>Opening Hours</h4>
+              <table class="data-table hours-table">
+                <caption>Spade GYM Opening Hours</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Day</th>
+                    <th scope="col">Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>Saturday</td><td>06:00 – 22:00</td></tr>
+                  <tr><td>Sunday</td><td>06:00 – 22:00</td></tr>
+                  <tr><td>Monday</td><td>06:00 – 22:00</td></tr>
+                  <tr><td>Tuesday</td><td>06:00 – 22:00</td></tr>
+                  <tr><td>Wednesday</td><td>06:00 – 22:00</td></tr>
+                  <tr><td>Thursday</td><td>06:00 – 22:00</td></tr>
+                  <tr><td>Friday</td><td>09:00 – 18:00</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4 class="footer-heading"><span class="logo-icon" id="footer-logo">	&#9824;</span> Spade GYM</h4>
+          <p>Train hard. Live strong.</p>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="classes.html">Classes</a></li>
+            <li><a href="membership.html">Membership</a></li>
+            <li><a href="trainers.html">Trainers</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Contact</h4>
+          <address>
+            <p>📍 12 Rue des Athlètes, Constantine, Algeria</p>
+            <p>📞 +213 55 66 79 40</p>
+            <p>✉️ contact@spadegym.dz</p>
+          </address>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Spade Gym. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+    <script src="nav.js"></script>
+
+    <script src="contact-contac.js"></script>
+
+</body>
+</html>§
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── ELEMENTS ────────────────────────────────────────────────
+  const form    = document.querySelector('.contact-form');
+  const name    = document.getElementById('contact-name');
+  const email   = document.getElementById('contact-email');
+  const subject = document.getElementById('contact-subject');
+  const message = document.getElementById('contact-message');
+
+  // ── CHARACTER COUNTER (message only) ────────────────────────
+  const counter = document.createElement('small');
+  counter.style.cssText = 'color:var(--text-muted);font-size:0.78rem;float:right;';
+  message.parentNode.appendChild(counter);
+  message.addEventListener('input', () => {
+    const len = message.value.length;
+    counter.textContent = `${len} / 20 min`;
+    counter.style.color = len >= 20 ? '#22c55e' : 'var(--text-muted)';
+  });
+
+  // ── HELPERS ─────────────────────────────────────────────────
+  function showError(el, msg) {
+    removeError(el);
+    el.style.border = '2px solid #e94560';
+    const s = document.createElement('span');
+    s.className = 'field-error';
+    s.textContent = msg;
+    s.style.cssText = 'color:#e94560;font-size:0.8rem;margin-top:4px;display:block;';
+    el.parentNode.appendChild(s);
+  }
+
+  function showSuccess(el) {
+    removeError(el);
+    el.style.border = '2px solid #22c55e';
+  }
+
+  function removeError(el) {
+    el.style.border = '';
+    const old = el.parentNode.querySelector('.field-error');
+    if (old) old.remove();
+  }
+
+  // ── VALIDATION ──────────────────────────────────────────────
+  function checkName()    {
+    const v = name.value.trim();
+    if (v.length < 2) { showError(name, 'Name must be at least 2 characters.'); return false; }
+    showSuccess(name); return true;
+  }
+  function checkEmail()   {
+    const v = email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { showError(email, 'Enter a valid email.'); return false; }
+    showSuccess(email); return true;
+  }
+  function checkSubject() {
+    const v = subject.value.trim();
+    if (v.length < 5) { showError(subject, 'Subject must be at least 5 characters.'); return false; }
+    showSuccess(subject); return true;
+  }
+  function checkMessage() {
+    const v = message.value.trim();
+    if (v.length < 20) { showError(message, 'Message must be at least 20 characters.'); return false; }
+    showSuccess(message); return true;
+  }
+
+  // ── REAL-TIME (blur) ────────────────────────────────────────
+  name.addEventListener('blur',    checkName);
+  email.addEventListener('blur',   checkEmail);
+  subject.addEventListener('blur', checkSubject);
+  message.addEventListener('blur', checkMessage);
+
+  // ── SUBMIT ──────────────────────────────────────────────────
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const ok = checkName() & checkEmail() & checkSubject() & checkMessage();
+    if (!ok) return;
+
+    // Save to localStorage (simulated backend)
+    const msg = {
+      id: Date.now(),
+      name: name.value.trim(),
+      email: email.value.trim(),
+      subject: subject.value.trim(),
+      message: message.value.trim(),
+      date: new Date().toLocaleString()
+    };
+    const all = JSON.parse(localStorage.getItem('contact_messages') || '[]');
+    all.push(msg);
+    localStorage.setItem('contact_messages', JSON.stringify(all));
+
+    form.reset();
+    [name, email, subject, message].forEach(removeError);
+    counter.textContent = '';
+    showToast('Message sent! We will get back to you soon.');
+  });
+
+  // ── TOAST ───────────────────────────────────────────────────
+  function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.textContent = '✅ ' + msg;
+    toast.style.cssText = `
+      position:fixed; bottom:2rem; right:2rem;
+      background:#22c55e; color:#fff;
+      padding:0.9rem 1.5rem; border-radius:10px;
+      font-family:'Oswald',sans-serif; font-size:1rem;
+      box-shadow:0 4px 20px rgba(0,0,0,0.3);
+      z-index:9999; opacity:1; transition:opacity 0.5s;
+    `;
+    document.body.appendChild(toast);
+    // Auto-dismiss after 4 seconds
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 500);
+    }, 4000);
+  }
+
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── DATA ────────────────────────────────────────────────────
+  const classes = [
+    { name: 'HIIT Blast',              trainer: 'Karim Mansouri', day: 'Monday',    time: '18:00', duration: 45, difficulty: 'Advanced'    },
+    { name: 'Pilates Core',            trainer: 'Sara Benali',    day: 'Tuesday',   time: '10:00', duration: 55, difficulty: 'Beginner'     },
+    { name: 'Boxing Fundamentals',     trainer: 'Yacine Ferhat',  day: 'Wednesday', time: '17:00', duration: 60, difficulty: 'Intermediate' },
+    { name: 'CrossFit WOD',            trainer: 'Karim Mansouri', day: 'Thursday',  time: '06:30', duration: 60, difficulty: 'Advanced'     },
+    { name: 'Strength & Conditioning', trainer: 'Yacine Ferhat',  day: 'Friday',    time: '17:30', duration: 75, difficulty: 'Advanced'     },
+    { name: 'Kickboxing',              trainer: 'Yacine Ferhat',  day: 'Saturday',  time: '11:00', duration: 60, difficulty: 'Intermediate' },
+    { name: 'Sunday Stretch',          trainer: 'Lina Chouiref',  day: 'Sunday',    time: '10:00', duration: 45, difficulty: 'Beginner'     },
+  ];
+
+  // ── STATE ───────────────────────────────────────────────────
+  let filterTrainer    = 'All';
+  let filterDay        = 'All';
+  let filterDifficulty = 'All';
+  let sortCol          = null;
+  let sortAsc          = true;
+
+  // ── BUILD FILTER UI ─────────────────────────────────────────
+  const filterContainer = document.querySelector('.filter-section .container');
+  filterContainer.innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center;">
+
+      <select id="f-trainer" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:0.4rem 0.8rem;">
+        <option value="All">All Trainers</option>
+        ${[...new Set(classes.map(c => c.trainer))].map(t => `<option>${t}</option>`).join('')}
+      </select>
+
+      <select id="f-day" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:0.4rem 0.8rem;">
+        <option value="All">All Days</option>
+        ${['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map(d => `<option>${d}</option>`).join('')}
+      </select>
+
+      <div id="f-diff" style="display:flex;gap:0.4rem;">
+        ${['All','Beginner','Intermediate','Advanced'].map((d,i) =>
+          `<button class="btn btn-sm ${i===0?'btn-accent':'btn-outline'}" data-diff="${d}">${d}</button>`
+        ).join('')}
+      </div>
+
+      <button id="f-reset" class="btn btn-sm btn-outline">✕ Reset</button>
+    </div>
+    <p id="f-count" style="margin-top:0.6rem;font-size:0.85rem;color:var(--text-muted);"></p>
+  `;
+
+  // ── ELEMENTS ────────────────────────────────────────────────
+  const tbody      = document.querySelector('#classes-table tbody');
+  const ths        = document.querySelectorAll('#classes-table thead th');
+  const diffBtns   = document.querySelectorAll('#f-diff button');
+  const countLabel = document.getElementById('f-count');
+
+  // ── SORTABLE COLUMNS (index → data key) ─────────────────────
+  const sortMap = { 0: 'name', 1: 'trainer', 2: 'day', 5: 'difficulty' };
+  ths.forEach((th, i) => {
+    if (!sortMap[i]) return;
+    th.style.cursor = 'pointer';
+    th.dataset.col  = sortMap[i];
+    th.innerHTML   += ' <span style="font-size:0.7rem;opacity:0.5;">▲▼</span>';
+    th.addEventListener('click', () => {
+      sortAsc = sortCol === sortMap[i] ? !sortAsc : true;
+      sortCol = sortMap[i];
+      // update arrows
+      ths.forEach(t => { if (t.querySelector('span')) t.querySelector('span').textContent = ' ▲▼'; });
+      th.querySelector('span').textContent = sortAsc ? ' ▲' : ' ▼'; 
+      render();
+    });
+  });
+
+  // ── FILTER EVENTS ───────────────────────────────────────────
+  document.getElementById('f-trainer').addEventListener('change', e => { filterTrainer = e.target.value; render(); });
+  document.getElementById('f-day').addEventListener('change',     e => { filterDay     = e.target.value; render(); });
+
+  diffBtns.forEach(btn => btn.addEventListener('click', () => {
+    filterDifficulty = btn.dataset.diff;
+    diffBtns.forEach(b => { b.classList.replace('btn-accent','btn-outline'); });
+    btn.classList.replace('btn-outline','btn-accent');
+    render();
+  }));
+
+  document.getElementById('f-reset').addEventListener('click', () => {
+    filterTrainer = filterDay = filterDifficulty = 'All';
+    sortCol = null; sortAsc = true;
+    document.getElementById('f-trainer').value = 'All';
+    document.getElementById('f-day').value     = 'All';
+    diffBtns.forEach((b,i) => { b.className = `btn btn-sm ${i===0?'btn-accent':'btn-outline'}`; });
+    ths.forEach(t => { if (t.querySelector('span')) t.querySelector('span').textContent = ' ▲▼'; });
+    render();
+  });
+
+  // ── RENDER ──────────────────────────────────────────────────
+  function render() {
+    // 1. Filter
+    let rows = classes.filter(c =>
+      (filterTrainer    === 'All' || c.trainer    === filterTrainer)    &&
+      (filterDay        === 'All' || c.day        === filterDay)        &&
+      (filterDifficulty === 'All' || c.difficulty === filterDifficulty)
+    );
+
+    // 2. Sort
+    if (sortCol) rows.sort((a, b) => {
+      let A = a[sortCol], B = b[sortCol];
+      if (typeof A === 'number') return sortAsc ? A - B : B - A;
+      return sortAsc ? A.localeCompare(B) : B.localeCompare(A);
+    });
+
+    // 3. Draw rows
+    tbody.innerHTML = rows.length
+      ? rows.map(c => `
+          <tr>
+            <td>${c.name}</td>
+            <td>${c.trainer}</td>
+            <td>${c.day}</td>
+            <td>${c.time}</td>
+            <td>${c.duration} min</td>
+            <td><span class="badge badge-${c.difficulty.toLowerCase()}">${c.difficulty}</span></td>
+            <td><a href="#" class="btn btn-xs btn-outline">View</a></td>
+          </tr>`).join('')
+      : `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted);">No classes found.</td></tr>`;
+
+    countLabel.textContent = `Showing ${rows.length} of ${classes.length} classes`;
+  }
+
+  render(); // first load
+
+});
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spade Gym — Forge Your Best Self</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ====== HEADER / NAVBAR ====== -->
+  <header class="site-header">
+    <nav class="navbar" aria-label="Main Navigation">
+      <a href="index.html" class="nav-logo" id="namelogo">
+        <span class="logo-icon" >	&#9824;</span> Spade GYM
+      </a>
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="index.html" class="nav-link active">Home</a></li>
+        <li><a href="classes.html" class="nav-link">Classes</a></li>
+        <li><a href="membership.html" class="nav-link">Membership</a></li>
+        <li><a href="trainers.html" class="nav-link">Trainers</a></li>
+        <li><a href="contact.html" class="nav-link">Contact</a></li>
+        <li><a href="admin-login.html" class="nav-link nav-admin-btn">Admin</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ====== MAIN CONTENT ====== -->
+  <main>
+
+    <!-- HERO SECTION -->
+    <section class="hero" aria-label="Hero Banner">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <h1 class="hero-title">Spade Gym</h1>
+        <p class="hero-tagline">Forge Your Best Self</p>
+        <p class="hero-sub">World-class facilities. Expert trainers. Unbreakable community.</p>
+        <a href="membership.html" class="btn btn-accent btn-lg">Join Now</a>
+        <a href="classes.html" class="btn btn-outline btn-lg">Explore Classes</a>
+      </div>
+    </section>
+
+    <!-- STATS STRIP -->
+    <section class="stats-strip" aria-label="Gym Statistics">
+      <div class="stats-strip-inner">
+        <div class="stat-pill"><span class="stat-num">148<span class="stat-plus">+</span></span><span class="stat-lbl">Members</span></div>
+        <div class="stat-sep"></div>
+        <div class="stat-pill"><span class="stat-num">6</span><span class="stat-lbl">Expert Trainers</span></div>
+        <div class="stat-sep"></div>
+        <div class="stat-pill"><span class="stat-num">12<span class="stat-plus">+</span></span><span class="stat-lbl">Weekly Classes</span></div>
+        <div class="stat-sep"></div>
+        <div class="stat-pill"><span class="stat-num">3</span><span class="stat-lbl">Years Running</span></div>
+      </div>
+    </section>
+
+    <!-- FACILITIES SECTION -->
+    <section class="section facilities-section" aria-labelledby="facilities-heading">
+      <div class="container">
+        <h2 id="facilities-heading" class="section-title">Our Facilities</h2>
+        <p class="section-subtitle">Everything you need to reach peak performance</p>
+        <div class="cards-grid">
+
+          <article class="card facility-card">
+            <figure class="card-img-wrap">
+              <img src="imgs/cardio-room.jpg" alt="Cardio Room"  />
+              <figcaption class="sr-only">Cardio Room</figcaption>
+            </figure>   
+            <div class="card-body">
+              <h3 class="card-title">🏃 Cardio Room</h3>
+              <p>State-of-the-art treadmills, ellipticals, rowing machines and bikes for endurance training.</p>
+              <ul class="feature-list">
+                <li>50+ cardio machines</li>
+                <li>Heart-rate monitoring</li>
+                <li>Personal screen &amp; audio</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="card facility-card">
+            <figure class="card-img-wrap">
+              <img src="imgs\weitgh-area.jpg" alt="Weights Area"  />
+              <figcaption class="sr-only">Weights Area</figcaption>
+            </figure>
+            <div class="card-body">
+              <h3 class="card-title">🏋️ Weights Area</h3>
+              <p>Free weights, barbells, dumbbells and cable machines for strength and resistance training.</p>
+              <ul class="feature-list">
+                <li>Full free-weight zone</li>
+                <li>Power racks &amp; benches</li>
+                <li>Olympic lifting platforms</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="card facility-card">
+            <figure class="card-img-wrap">
+              <img src="imgs/swim-pool.jpg" alt="Swimming Pool"  />
+              <figcaption class="sr-only">Swimming Pool</figcaption>
+            </figure>
+            <div class="card-body">
+              <h3 class="card-title">🏊 Swimming Pool</h3>
+              <p>Olympic-size indoor heated pool available for lap swimming and aqua fitness classes.</p>
+              <ul class="feature-list">
+                <li>25-meter heated pool</li>
+                <li>Aqua aerobics classes</li>
+                <li>Dedicated lap lanes</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="card facility-card">
+            <figure class="card-img-wrap">
+              <img src="imgs/group-studio.jpg" alt="Group Studio" />
+              <figcaption class="sr-only">Group Studio</figcaption>
+            </figure>
+            <div class="card-body">
+              <h3 class="card-title">🎵 Group Studio</h3>
+              <p>Spacious studio for group fitness classes including yoga, Zumba, Pilates and spin.</p>
+              <ul class="feature-list">
+                <li>Sound system &amp; mirrors</li>
+                <li>20+ weekly classes</li>
+                <li>All fitness levels</li>
+              </ul>
+            </div>
+          </article>      
+
+          <article class="card facility-card">
+            <figure class="card-img-wrap">
+              <img src="imgs\sauna-spac.jpg" alt="Sauna and Spa"  />
+              <figcaption class="sr-only">Sauna and Spa</figcaption>
+            </figure>
+            <div class="card-body">
+              <h3 class="card-title">🧖 Sauna &amp; Spa</h3>
+              <p>Premium recovery zone with sauna, steam room, and relaxation lounge.</p>
+              <ul class="feature-list">
+                <li>Finnish dry sauna</li>
+                <li>Steam room</li>
+                <li>Cold plunge pool</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="card facility-card">
+            <figure class="card-img-wrap">
+              <img src="imgs\personal-teaner.jpg" alt="Personal Training"  />
+              <figcaption class="sr-only">Personal Training</figcaption>
+            </figure>
+            <div class="card-body">
+              <h3 class="card-title">💪 Personal Training</h3>
+              <p>One-on-one sessions with certified trainers tailored to your personal fitness goals.</p>
+              <ul class="feature-list">
+                <li>Certified PT coaches</li>
+                <li>Custom workout plans</li>
+                <li>Nutrition guidance</li>
+              </ul>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- MEMBERSHIP HIGHLIGHTS SECTION -->
+    <section class="section membership-preview-section" aria-labelledby="plans-heading">
+      <div class="container">
+        <h2 id="plans-heading" class="section-title">Membership Plans</h2>
+        <p class="section-subtitle">Choose the plan that fits your lifestyle</p>
+        <div class="plans-grid">
+
+          <article class="card plan-card plan-bronze">
+            <div class="plan-header">
+              <h3>🥉 Bronze</h3>
+              <p class="plan-price"><span class="price-amount">2,500</span> DZD<span class="price-period">/month</span></p>
+            </div>
+            <ul class="plan-features">
+              <li>Gym floor access</li>
+              <li>Cardio equipment</li>
+              <li>Locker room</li>
+              <li>2 group classes/month</li>
+            </ul>
+            <a href="membership.html" class="btn btn-outline">Choose Bronze</a>
+          </article>
+
+          <article class="card plan-card plan-silver plan-recommended">
+            <span class="recommended-badge">⭐ Popular</span>
+            <div class="plan-header">
+              <h3>🥈 Silver</h3>
+              <p class="plan-price"><span class="price-amount">5,500</span> DZD<span class="price-period">/quarter</span></p>
+            </div>
+            <ul class="plan-features">
+              <li>All Bronze benefits</li>
+              <li>Unlimited group classes</li>
+              <li>Pool access</li>
+              <li>1 PT session/month</li>
+              <li>Sauna access</li>
+            </ul>
+            <a href="membership.html" class="btn btn-accent">Choose Silver</a>
+          </article>
+
+          <article class="card plan-card plan-gold">
+            <div class="plan-header">
+              <h3>🥇 Gold</h3>
+              <p class="plan-price"><span class="price-amount">20,000</span> DZD<span class="price-period">/year</span></p>
+            </div>
+            <ul class="plan-features">
+              <li>All Silver benefits</li>
+              <li>Unlimited PT sessions</li>
+              <li>Priority class booking</li>
+              <li>Nutrition plan</li>
+              <li>Guest passes (2/year)</li>
+            </ul>
+            <a href="membership.html" class="btn btn-gold">Choose Gold</a>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ====== FOOTER ====== -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+
+        <div class="footer-col">
+          <h4 class="footer-heading"><span class="logo-icon" id="footer-logo">	&#9824;</span> Spade GYM</h4>
+          <p>Your journey to peak performance starts here. Train hard. Live strong.</p>
+          <ul class="social-links">
+            <li><a href="https://www.facebook.com/" >Facebook</a></li>
+            <li><a href="https://www.instagram.com/">Instagram</a></li>
+            <li><a href="https://www.youtube.com/" >YouTube</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4 class="footer-heading">Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="classes.html">Classes</a></li>
+            <li><a href="membership.html">Membership</a></li>
+            <li><a href="trainers.html">Trainers</a></li>
+            <li><a href="contact.html">Contact Us</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4 class="footer-heading">Opening Hours</h4>
+          <address>
+            <ul class="hours-list">
+              <li><strong>Sat – Thu:</strong> 06:00 – 22:00</li>
+              <li><strong>Friday:</strong> 09:00 – 18:00</li>
+            </ul>
+              <p>📍 12 Rue des Athlètes, Constantine, Algeria</p>
+              <p>📞 +213 55 66 79 40</p>
+              <p>✉️ contact@spadegym.dz</p>
+          </address>
+        </div>
+
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Spade Gym. All rights reserved. </p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="nav.js"></script>
+  
+</body> 
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Membership — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="navbar" aria-label="Main Navigation" >
+      <a href="index.html" class="nav-logo" id="namelogo">
+        <span class="logo-icon" >	&#9824;</span> Spade GYM
+      </a>
+        <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="classes.html" class="nav-link">Classes</a></li>
+        <li><a href="membership.html" class="nav-link active">Membership</a></li>
+        <li><a href="trainers.html" class="nav-link">Trainers</a></li>
+        <li><a href="contact.html" class="nav-link">Contact</a></li>
+        <li><a href="admin-login.html" class="nav-link nav-admin-btn">Admin</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- PAGE HEADER -->
+    <section class="page-hero" aria-label="Page Header">
+      <div class="container">
+        <h1>Membership Plans</h1>
+        <p>Invest in yourself. Choose a plan and start your transformation today.</p>
+      </div>
+    </section>
+
+    <!-- MEMBERSHIP PLAN CARDS -->
+    <section class="section" aria-labelledby="membership-plans-heading">
+      <div class="container">
+        <h2 id="membership-plans-heading" class="section-title">Choose Your Plan</h2>
+        <div class="plans-grid">
+
+          <!-- BRONZE PLAN -->
+          <article class="card plan-card plan-bronze" id="plan-bronze">
+            <div class="plan-header">
+              <h3>🥉 Bronze</h3>
+              <p class="plan-price"><span class="price-amount">2,500</span> DZD<span class="price-period">/month</span></p>
+            </div>
+            <dl class="plan-details">
+              <dt>Duration</dt><dd>Monthly (30 days)</dd>
+              <dt>Access</dt><dd>Gym floor &amp; cardio area</dd>
+              <dt>Classes</dt><dd>2 group classes included</dd>
+            </dl>
+            <ul class="plan-features">
+              <li>✅ Full gym floor access</li>
+              <li>✅ Cardio equipment</li>
+              <li>✅ Locker room &amp; showers</li>
+              <li>✅ 2 group classes/month</li>
+              <li>❌ Pool access</li>
+              <li>❌ Personal training</li>
+              <li>❌ Sauna &amp; spa</li>
+            </ul>
+            <a href="#register-form" class="btn btn-outline">Choose Bronze</a>
+          </article>
+
+          <!-- SILVER PLAN -->
+          <article class="card plan-card plan-silver plan-recommended" id="plan-silver">
+            <span class="recommended-badge">⭐ Most Popular</span>
+            <div class="plan-header">
+              <h3>🥈 Silver</h3>
+              <p class="plan-price"><span class="price-amount">5,500</span> DZD<span class="price-period">/quarter</span></p>
+            </div>
+            <dl class="plan-details">
+              <dt>Duration</dt><dd>Quarterly (3 months)</dd>
+              <dt>Access</dt><dd>Full facility access</dd>
+              <dt>Classes</dt><dd>Unlimited group classes</dd>
+            </dl>
+            <ul class="plan-features">
+              <li>✅ All Bronze benefits</li>
+              <li>✅ Unlimited group classes</li>
+              <li>✅ Swimming pool access</li>
+              <li>✅ 2 PT session/month</li>
+              <li>✅ Sauna &amp; steam room</li>
+              <li>❌ Nutrition plan</li>
+              <li>❌ Guest passes</li>
+            </ul>
+            <a href="#register-form" class="btn btn-accent">Choose Silver</a>
+          </article>
+
+          <!-- GOLD PLAN -->
+          <article class="card plan-card plan-gold" id="plan-gold">
+            <div class="plan-header">
+              <h3>🥇 Gold</h3>
+              <p class="plan-price"><span class="price-amount">20,000</span> DZD<span class="price-period">/year</span></p>
+            </div>
+            <dl class="plan-details">
+              <dt>Duration</dt><dd>Annual (12 months)</dd>
+              <dt>Access</dt><dd>Premium full access</dd>
+              <dt>Classes</dt><dd>Unlimited + priority booking</dd>
+            </dl>
+            <ul class="plan-features">
+              <li>✅ All Silver benefits</li>
+              <li>✅ Unlimited PT sessions</li>
+              <li>✅ Priority class booking</li>
+              <li>✅ Custom nutrition plan</li>
+              <li>✅ Guest passes (4/year)</li>
+              <li>✅ Merchandise discount 15%</li>
+              <li>✅ Body composition analysis</li>
+            </ul>
+            <a href="#register-form" class="btn btn-gold">Choose Gold</a>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- REGISTRATION FORM -->
+    <section class="section form-section" aria-labelledby="register-heading" id="register-form">
+      <div class="container">
+        <h2 id="register-heading" class="section-title">Register Now</h2>
+        <p class="section-subtitle">Complete the form below to start your IronPeak journey</p>
+        <form class="membership-form" action="#" method="POST" novalidate>
+
+          <fieldset>
+            <legend>Personal Information</legend>
+
+            <div class="form-group">
+              <label for="full-name">Full Name <span class="required"></span></label>
+              <input type="text" id="full-name" placeholder="e.g. Ahmed Ramdani" required minlength="3" />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="email">Email Address <span class="required"></span></label>
+                <input type="email" id="email" placeholder="you@example.com" required  />
+              </div>
+              <div class="form-group">
+                <label for="phone">Phone Number <span class="required"></span></label>
+                <input type="tel" id="phone" placeholder="+213 6XX XXX XXX" required  />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="dob">Date of Birth <span class="required"></span></label>
+              <input type="date" id="dob" required  />
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Select Membership Plan</legend>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="radio-label" value="bronze" required />
+                <span class="radio-custom"></span>
+                🥉 Bronze — 2,500 DZD/month
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="radio-label" value="silver" required />
+                <span class="radio-custom"></span>
+                🥈 Silver — 5,500 DZD/quarter
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="radio-label" value="gold" required />
+                <span class="radio-custom"></span>
+                🥇 Gold — 20,000 DZD/year
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Terms &amp; Conditions</legend>
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" name="terms" id="terms" required />
+                <span class="checkbox-custom"></span>
+                I agree to the <a href="#">Terms and Conditions</a> and <a href="#">Privacy Policy</a>
+              </label>
+            </div>
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" name="newsletter" id="newsletter" />
+                <span class="checkbox-custom"></span>
+                Subscribe to newsletter for offers and updates
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="form-submit">
+            <button type="submit" class="btn btn-accent btn-lg">Submit Registration</button>
+            <button type="reset" class="btn btn-outline">Clear Form</button>
+          </div>
+
+        </form>
+      </div>
+    </section>
+
+    <!-- PAYMENT METHODS -->
+    <section class="section payment-section" >
+      <div class="container">
+        <h2 id="payment-heading" class="section-title">Payment Methods</h2>
+        <div class="payment-methods">
+          <figurey>
+            <img src="imgs/cib_deux.png" alt="CIB Card" width="80" height="50" />
+            <figcaption>CIB Card</figcaption>
+          </figurey>
+          <figure>
+            <img src="imgs/baridimob-logo.png" alt="BaridiMob" width="80" height="50" />
+            <figcaption>BaridiMob</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4 class="footer-heading"><span class="logo-icon" id="footer-logo">	&#9824;</span> Spade GYM</h4>
+          <p>Train hard. Live strong.</p>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="classes.html">Classes</a></li>
+            <li><a href="trainers.html">Trainers</a></li>
+            <li><a href="contact.html">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Contact</h4>
+          <address>
+            <p>📍 12 Rue des Athlètes, Constantine, Algeria</p>
+            <p>📞 +213 55 66 79 40</p>
+            <p>✉️ contact@spadegym.dz</p>
+          </address>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Spade Gym. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+
+  <script src="validate-member.js"></script>
+  <script src="planselector-member.js"></script>
+
+    <script src="nav.js"></script>
+
+</body>
+</html>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  const hamburger = document.querySelector('.hamburger');
+  const navLinks  = document.querySelector('.nav-links');
+
+  hamburger.addEventListener('click', function () {
+    navLinks.classList.toggle('open');   // show/hide the menu
+    const isOpen = navLinks.classList.contains('open');
+    hamburger.setAttribute('aria-expanded', isOpen); // accessibility
+  });
+
+  // Close menu when a link is clicked
+  navLinks.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+      navLinks.classList.remove('open');
+      hamburger.setAttribute('aria-expanded', false);
+    });
+  });
+
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── PLAN DATA ───────────────────────────────────────────────
+  const plans = {
+    bronze: { name: '🥉 Bronze', price: '2,500 DZD/month' },
+    silver: { name: '🥈 Silver', price: '5,500 DZD/quarter' },
+    gold:   { name: '🥇 Gold',   price: '20,000 DZD/year' },
+  };
+
+  // ── STICKY CART BAR (injected into page) ────────────────────
+  const bar = document.createElement('div');
+  bar.id = 'cart-bar';
+  bar.style.cssText = `
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #232063; border-top: 2px solid var(--accent);
+    display: none; align-items: center; justify-content: space-between;
+    padding: 0.8rem 2rem; z-index: 999; gap: 1rem; flex-wrap: wrap;
+  `;
+  bar.innerHTML = `
+    <span id="cart-info" style="color:var(--text);font-family:'Oswald',sans-serif;font-size:1rem;"></span>
+    <div style="display:flex;gap:0.75rem;align-items:center;">
+      <a id="cart-proceed" href="#register-form" class="btn btn-accent btn-sm">Proceed to Register →</a>
+      <button id="cart-clear" class="btn btn-sm btn-outline" style="font-size:0.75rem;">✕ Clear</button>
+    </div>
+  `;
+  document.body.appendChild(bar);
+
+  // ── SELECT PLAN BUTTONS ─────────────────────────────────────
+  // Add a "Select Plan" button to each plan card
+  document.querySelectorAll('.plan-card').forEach(card => {
+    // Detect which plan this card is by its id or class
+    const key = ['bronze','silver','gold'].find(k => card.id === `plan-${k}` || card.classList.contains(`plan-${k}`));
+    if (!key) return;
+
+    const btn = document.createElement('button');
+    btn.className   = 'btn btn-sm btn-outline select-plan-btn';
+    btn.dataset.plan = key;
+    btn.textContent  = 'Select Plan';
+    btn.style.marginTop = '0.5rem';
+    card.appendChild(btn);
+
+    btn.addEventListener('click', () => selectPlan(key));
+  });
+
+  // ── SELECT PLAN ─────────────────────────────────────────────
+  function selectPlan(key) {
+    sessionStorage.setItem('selectedPlan', key);  // save to session
+    updateUI(key);
+  }
+
+  // ── UPDATE UI ───────────────────────────────────────────────
+  function updateUI(key) {
+    const plan = plans[key];
+
+    // Show cart bar
+    bar.style.display = 'flex';
+    document.getElementById('cart-info').innerHTML =
+      `🛒 Selected: <strong style="color:var(--accent);">${plan.name}</strong> — ${plan.price}`;
+
+    // Highlight selected card, dim others
+    document.querySelectorAll('.plan-card').forEach(card => {
+      const isSelected = card.id === `plan-${key}` || card.classList.contains(`plan-${key}`);
+      card.style.outline = isSelected ? '3px solid var(--accent)' : '';
+      card.style.opacity = isSelected ? '1' : '0.6';
+    });
+
+    // Update all "Select Plan" buttons
+    document.querySelectorAll('.select-plan-btn').forEach(btn => {
+      const isSelected = btn.dataset.plan === key;
+      btn.textContent  = isSelected ? '✅ Selected' : 'Select Plan';
+      btn.className    = `btn btn-sm select-plan-btn ${isSelected ? 'btn-accent' : 'btn-outline'}`;
+    });
+
+    // Pre-select the matching radio in the registration form
+    const radio = document.querySelector(`input[type="radio"][value="${key}"]`);
+    if (radio) radio.checked = true;
+  }
+
+  // ── CLEAR ───────────────────────────────────────────────────
+  function clearPlan() {
+    sessionStorage.removeItem('selectedPlan');
+    bar.style.display = 'none';
+    document.querySelectorAll('.plan-card').forEach(c => { c.style.outline = ''; c.style.opacity = '1'; });
+    document.querySelectorAll('.select-plan-btn').forEach(b => { b.textContent = 'Select Plan'; b.className = 'btn btn-sm btn-outline select-plan-btn'; });
+    document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+  }
+
+  document.getElementById('cart-clear').addEventListener('click', clearPlan);
+
+  // Clear on form submit
+  const form = document.querySelector('.membership-form');
+  if (form) form.addEventListener('submit', () => sessionStorage.removeItem('selectedPlan'));
+
+  // ── RESTORE FROM SESSION ────────────────────────────────────
+  const saved = sessionStorage.getItem('selectedPlan');
+  if (saved) updateUI(saved);
+
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── TRAINER DATA ────────────────────────────────────────────
+  const trainers = [
+    {
+      id: 'sb', name: 'Sara Benali', specialty: 'Yoga & Pilates',
+      exp: '8 Years', email: 'sara@spadegym.dz',
+      photo: 'https://placehold.co/200x200/1a1a2e/e94560?text=SB',
+      bio: 'Sara is a certified yoga and Pilates instructor passionate about mindful movement. She holds certifications from the International Yoga Alliance and has helped over 300 members improve their mobility.',
+      classes: ['Pilates Core — Tuesday 10:00', 'Sunday Stretch — Sunday 10:00']
+    },
+    {
+      id: 'km', name: 'Karim Mansouri', specialty: 'CrossFit & HIIT',
+      exp: '10 Years', email: 'karim@spadegym.dz',
+      photo: 'https://placehold.co/200x200/1a1a2e/e94560?text=KM',
+      bio: 'Karim is a Level 3 CrossFit coach and HIIT specialist. Former national-level athlete, he combines intense functional training with personalized programming.',
+      classes: ['HIIT Blast — Monday 18:00', 'CrossFit WOD — Thursday 06:30']
+    },
+    {
+      id: 'lc', name: 'Lina Chouiref', specialty: 'Zumba & Spin',
+      exp: '6 Years', email: 'lina@spadegym.dz',
+      photo: 'https://placehold.co/200x200/1a1a2e/e94560?text=LC',
+      bio: 'Lina brings energy and fun to every session. Certified Zumba instructor and indoor cycling coach, she creates high-energy routines that make cardio feel like a celebration.',
+      classes: ['Zumba — Wednesday 09:00', 'Spin Class — Friday 18:00']
+    },
+    {
+      id: 'yf', name: 'Yacine Ferhat', specialty: 'Boxing & Strength',
+      exp: '12 Years', email: 'yacine@spadegym.dz',
+      photo: 'https://placehold.co/200x200/1a1a2e/e94560?text=YF',
+      bio: 'Yacine is a former professional boxer turned strength and conditioning specialist. He designs programs that build explosive power, coordination, and functional strength.',
+      classes: ['Boxing Fundamentals — Wednesday 17:00', 'Strength & Conditioning — Friday 17:30', 'Kickboxing — Saturday 11:00']
+    },
+    {
+      id: 'ak', name: 'Amira Khelifi', specialty: 'Nutrition & Wellness',
+      exp: '5 Years', email: 'amira@spadegym.dz',
+      photo: 'https://placehold.co/200x200/1a1a2e/e94560?text=AK',
+      bio: 'Amira holds a degree in Sports Nutrition and is a certified wellness coach. She works with Gold members to design personalized nutrition plans that complement their training.',
+      classes: ['Nutrition Workshop — Monday 11:00']
+    },
+    {
+      id: 'bt', name: 'Bilal Tabet', specialty: 'Aqua Fitness',
+      exp: '7 Years', email: 'bilal@spadegym.dz',
+      photo: 'https://placehold.co/200x200/1a1a2e/e94560?text=BT',
+      bio: 'Bilal is a certified swim coach and aqua aerobics instructor. Specializing in low-impact exercise, his water-based sessions are ideal for rehabilitation and seniors.',
+      classes: ['Aqua Aerobics — Tuesday 09:00', 'Lap Swimming — Thursday 08:00']
+    },
+  ];
+
+  // ── SEARCH BAR ──────────────────────────────────────────────
+  const grid = document.querySelector('.trainers-grid');
+
+  // Inject search bar above the grid
+  const searchWrap = document.createElement('div');
+  searchWrap.style.cssText = 'margin-bottom:2rem;text-align:center;';
+  searchWrap.innerHTML = `
+    <input id="trainer-search" type="text" placeholder="🔍 Search by name or specialty..."
+      style="width:100%;max-width:480px;padding:0.7rem 1.2rem;border-radius:999px;
+      border:1px solid var(--border);background:var(--card);color:var(--text);font-size:1rem;">
+  `;
+  grid.parentNode.insertBefore(searchWrap, grid);
+
+  // ── SEARCH LOGIC ────────────────────────────────────────────
+  document.getElementById('trainer-search').addEventListener('input', function () {
+    const q = this.value.toLowerCase().trim();
+    const cards = grid.querySelectorAll('.trainer-card');
+    let found = 0;
+
+    cards.forEach((card, i) => {
+      const t = trainers[i];
+      const match = t.name.toLowerCase().includes(q) || t.specialty.toLowerCase().includes(q);
+      card.style.display = match ? '' : 'none';
+      if (match) found++;
+    });
+
+    // Show/hide "no results" message
+    let noMsg = document.getElementById('no-trainers');
+    if (found === 0) {
+      if (!noMsg) {
+        noMsg = document.createElement('p');
+        noMsg.id = 'no-trainers';
+        noMsg.textContent = 'No trainers found.';
+        noMsg.style.cssText = 'text-align:center;color:var(--text-muted);padding:2rem;width:100%;';
+        grid.appendChild(noMsg);
+      }
+    } else {
+      if (noMsg) noMsg.remove();
+    }
+  });
+
+  // ── CLICK CARD → OPEN MODAL ─────────────────────────────────
+  grid.querySelectorAll('.trainer-card').forEach((card, i) => {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', () => openModal(trainers[i]));
+  });
+
+  // ── MODAL ───────────────────────────────────────────────────
+  function openModal(t) {
+    const overlay = document.createElement('div');
+    overlay.id = 'trainer-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem;';
+
+    overlay.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:2rem;max-width:500px;width:100%;position:relative;max-height:90vh;overflow-y:auto;">
+        <button id="modal-close" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text);font-size:1.5rem;cursor:pointer;">✕</button>
+        <div style="text-align:center;margin-bottom:1.5rem;">
+          <img src="${t.photo}" alt="${t.name}" style="border-radius:50%;width:100px;height:100px;margin-bottom:1rem;">
+          <h2 style="font-family:'Oswald',sans-serif;color:var(--white);">${t.name}</h2>
+          <p style="color:var(--accent);">${t.specialty} · ${t.exp} Experience</p>
+        </div>
+        <p style="color:var(--text-muted);margin-bottom:1.5rem;">${t.bio}</p>
+        <h4 style="font-family:'Oswald',sans-serif;color:var(--white);margin-bottom:0.5rem;">📅 Classes</h4>
+        <ul style="list-style:none;padding:0;margin-bottom:1.5rem;">
+          ${t.classes.map(c => `<li style="color:var(--text-muted);padding:0.3rem 0;border-bottom:1px solid var(--border);">• ${c}</li>`).join('')}
+        </ul>
+        <p style="color:var(--text-muted);">✉️ <a href="mailto:${t.email}" style="color:var(--accent);">${t.email}</a></p>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close on ✕ button
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    // Close on Escape key
+    document.addEventListener('keydown', onEsc);
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('trainer-modal');
+    if (modal) modal.remove();
+    document.removeEventListener('keydown', onEsc);
+  }
+
+  function onEsc(e) { if (e.key === 'Escape') closeModal(); }
+
+});
+/* ──────────────────────────────────────────────
+   1. CSS CUSTOM PROPERTIES (Design System)
+────────────────────────────────────────────── */
+:root {
+  /* Colors — Client Site */
+  
+  --primary:       #1C0770;   /* main gym identity */
+  --accent:        #e0083a;   /* energy / action */
+  --accent-2:      #3a7cff;   /* highlight / neon blue */
+  --accent-hover:  #e01e55;
+
+  --bg:            #07051f;
+  --bg-alt:        #0e0b2f;
+
+  --text:          #f1f2ff;
+  --text-muted:    #a4a6d3;
+
+  --card:          #141238;
+  --card-hover:    #1b1950;
+
+  --border:        #25236a;
+  --border-light:  #3431a0;
+
+  --white:         #ffffff;
+  --black:         #000000;
+
+  /* Colors — Admin Site */
+  --admin-bg:            #f4f6fb;
+  --admin-sidebar:       #0b017a;
+  --admin-sidebar-hover: #1406a8;
+
+  --admin-text:          #2a2f45;
+  --admin-card:          #ffffff;
+
+  --admin-border:        #e2e6f3;
+
+  --admin-accent:        #3a6cff;   /* brand action */
+  --admin-success:       #22c55e;
+  --admin-danger:        #ef4444;
+  --admin-warning:       #f59e0b;
+  /* Typography */
+  --font-heading:  'Oswald', sans-serif;
+  --font-body:     'Roboto', sans-serif;
+
+  --fs-xs:    0.75rem;    /* 12px */
+  --fs-sm:    0.875rem;   /* 14px */
+  --fs-base:  1rem;       /* 16px */
+  --fs-md:    1.125rem;   /* 18px */
+  --fs-lg:    1.25rem;    /* 20px */
+  --fs-xl:    1.5rem;     /* 24px */
+  --fs-2xl:   2rem;       /* 32px */
+  --fs-3xl:   2.5rem;     /* 40px */
+  --fs-4xl:   3.5rem;     /* 56px */
+  --fs-hero:  5rem;       /* 80px */
+
+  /* Spacing Scale (8px base) */
+  --sp-1:  0.5rem;    /* 8px  */
+  --sp-2:  1rem;      /* 16px */
+  --sp-3:  1.5rem;    /* 24px */
+  --sp-4:  2rem;      /* 32px */
+  --sp-5:  3rem;      /* 48px */
+  --sp-6:  4rem;      /* 64px */
+  --sp-7:  5rem;      /* 80px */
+
+  /* Layout */
+  --max-width:        1200px;
+  --navbar-height:    70px;
+  --sidebar-width:    260px;
+  --border-radius:    8px;
+  --border-radius-lg: 16px;
+  --border-radius-xl: 24px;
+  --border-radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm:  0 2px 8px rgba(0,0,0,0.3);
+  --shadow-md:  0 4px 20px rgba(0,0,0,0.4);
+  --shadow-lg:  0 8px 40px rgba(0,0,0,0.5);
+  --shadow-accent: 0 4px 20px rgba(233,69,96,0.4);
+
+  /* Transitions */
+  --transition: all 0.3s ease;
+  --transition-fast: all 0.15s ease;
+}
+
+/* ──────────────────────────────────────────────
+   2. CSS RESET & BASE STYLES
+────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+#namelogo:hover{
+  color: var(--text);
+}
+
+ul {
+  list-style: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--white);
+  letter-spacing: 0.02em;
+}
+
+h1 { font-size: var(--fs-3xl); }
+h2 { font-size: var(--fs-2xl); }
+h3 { font-size: var(--fs-xl); }
+h4 { font-size: var(--fs-lg); }
+
+p {
+  margin-bottom: var(--sp-2);
+  color: var(--text);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ──────────────────────────────────────────────
+   3. LAYOUT UTILITIES
+────────────────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--sp-2);
+}
+
+.section {
+  padding: var(--sp-6) 0;
+}
+
+.section-title {
+  font-size: var(--fs-2xl);
+  text-align: center;
+  margin-bottom: var(--sp-2);
+  position: relative;
+  padding-bottom: var(--sp-2);
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: var(--accent);
+  border-radius: var(--border-radius-full);
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-md);
+  margin-bottom: var(--sp-5);
+}
+
+/* 3-column grid → 2 tablet → 1 mobile */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+
+.plans-grid {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: center;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
+
+/* ──────────────────────────────────────────────
+   4. NAVIGATION / HEADER
+────────────────────────────────────────────── */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(15, 15, 26, 0.97);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--navbar-height);
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 var(--sp-2);
+}
+
+.nav-logo {
+  font-family: var(--font-heading);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+
+.logo-icon {
+  color: var(--accent);
+  font-size: 2.3em;
+  position: relative;
+  top: -5px;
+}
+
+#footer-logo {
+  color: var(--accent);
+  font-size: 2.3em;
+  position: relative;
+  top: +5px
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.nav-link {
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  gap: 0.08em;
+  text-transform: uppercase;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--border-radius);
+  position: relative;
+  transition: var(--transition);
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: width 0.3s ease;
+  border-radius: var(--border-radius-full);
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--accent);
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 80%;
+}
+
+.nav-admin-btn {
+  background: var(--accent);
+  color: var(--white) !important;
+  border-radius: var(--border-radius-full);
+  padding: 0.4rem 1.2rem;
+}
+
+.nav-admin-btn:hover {
+  background: var(--accent-hover);
+  color: var(--white) !important;
+}
+
+.nav-admin-btn::after { display: none; }
+
+/* Hamburger (mobile) */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--sp-1);
+}
+
+.hamburger span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background: var(--white);
+  border-radius: 2px;
+  transition: var(--transition);
+}
+
+/* ──────────────────────────────────────────────
+   5. BUTTONS
+────────────────────────────────────────────── */
+.btn {
+  display: inline-block;
+  font-family: var(--font-heading);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.6rem;
+  border-radius: var(--border-radius-full);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+  min-height: 44px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-lg { padding: 0.85rem 2.5rem; font-size: var(--fs-base); }
+.btn-sm { padding: 0.4rem 1rem; font-size: var(--fs-xs); min-height: 36px; }
+.btn-xs { padding: 0.25rem 0.75rem; font-size: var(--fs-xs); min-height: 30px; }
+.btn-full { width: 100%; }
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--white);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-accent);
+}
+.btn-accent:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(233,69,96,0.5);
+  color: var(--white);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-light);
+}
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.btn-gold {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border-light);
+  font-weight: 700;
+}
+.btn-gold:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+}
+
+/* ──────────────────────────────────────────────
+   6. HERO SECTION
+────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  min-height: calc(100vh - var(--navbar-height));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  background-image: url('imgs/background-hero2.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.9;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(10,10,21,0.92) 0%,
+    rgba(26,26,46,0.80) 50%,
+    rgba(233,69,96,0.15) 100%
+  );
+  z-index: 1;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 800px;
+  padding: var(--sp-4);
+}
+
+.hero-title {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--white) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--sp-1);
+  line-height: 1;
+}
+
+.hero-tagline {
+  font-family: var(--font-heading);
+  font-size: var(--fs-2xl);
+  color: var(--accent-2);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-2);
+}
+
+.hero-sub {
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  margin-bottom: var(--sp-4);
+}
+
+.hero-content .btn {
+  margin: 0 var(--sp-1);
+}
+
+/* ──────────────────────────────────────────────
+   7. PAGE HERO (inner pages)
+────────────────────────────────────────────── */
+.page-hero {
+  background: linear-gradient(135deg, var(--primary) 0%, #0d0d1f 100%);
+  border-bottom: 2px solid var(--accent);
+  padding: var(--sp-5) 0 var(--sp-4);
+  text-align: center;
+}
+
+.page-hero h1 {
+  font-size: var(--fs-3xl);
+  color: var(--white);
+  margin-bottom: var(--sp-2);
+}
+
+.page-hero p {
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ──────────────────────────────────────────────
+   8. CARDS
+────────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent);
+}
+
+.card-img-wrap {
+  margin: 0;
+  overflow: hidden;
+}
+
+.card-img-wrap img {
+  width: 100%;
+  transition: transform 0.4s ease;
+  height: 250px;
+  width: 500px;
+}
+
+.card:hover .card-img-wrap img {
+  transform: scale(1.05);
+}
+
+.card-body {
+  padding: var(--sp-3);
+}
+
+.card-title {
+  font-size: var(--fs-lg);
+  margin-bottom: var(--sp-1);
+  color: var(--white);
+}
+
+/* ──────────────────────────────────────────────
+   9. FEATURE LISTS
+────────────────────────────────────────────── */
+.feature-list {
+  padding: var(--sp-1) 0;
+}
+
+.feature-list li {
+  padding: 0.3rem 0;
+  padding-left: var(--sp-2);
+  position: relative;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.feature-list li::before {
+  content: '▸';
+  color: var(--accent);
+  position: absolute;
+  left: 0;
+}
+
+/* ──────────────────────────────────────────────
+   10. PLAN CARDS
+────────────────────────────────────────────── */
+.plan-card {
+  flex: 1;
+  min-width: 280px;
+  max-width: 340px;
+  padding: var(--sp-4);
+  border-radius: var(--border-radius-xl);
+  position: relative;
+}
+
+.plan-bronze { border-top: 4px solid #cd7f32; }
+.plan-silver { border-top: 4px solid #aaa; }
+.plan-gold   { border-top: 4px solid #ffd700; }
+
+.plan-recommended {
+  border-color: var(--accent);
+  border-top: 4px solid var(--accent);
+  transform: scale(1.03);
+  box-shadow: var(--shadow-accent);
+}
+
+.recommended-badge {
+  position: absolute;
+  top: -1px;
+  right: var(--sp-3);
+  background: var(--accent);
+  color: var(--white);
+  font-size: var(--fs-xs);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  padding: 0.3rem 0.8rem;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+  letter-spacing: 0.05em;
+}
+
+.plan-header {
+  text-align: center;
+  margin-bottom: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.plan-header h3 {
+  font-size: var(--fs-2xl);
+  margin-bottom: var(--sp-1);
+}
+
+.plan-price {
+  font-family: var(--font-heading);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.price-amount {
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--white);
+}
+
+.price-period {
+  font-size: var(--fs-xs);
+}
+
+.plan-features {
+  margin-bottom: var(--sp-3);
+}
+
+.plan-features li {
+  padding: 0.4rem 0;
+  font-size: var(--fs-sm);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.plan-features li:last-child { border-bottom: none; }
+
+.plan-details {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 0.4rem var(--sp-2);
+  margin-bottom: var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+.plan-details dt {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.plan-details dd {
+  color: var(--text);
+}
+
+/* ──────────────────────────────────────────────
+   11. BADGES
+────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border-radius: var(--border-radius-full);
+  font-size: var(--fs-xs);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.badge-beginner     { background: rgba(39,174,96,0.2); color: #27ae60; }
+.badge-intermediate { background: rgba(243,156,18,0.2); color: #f39c12; }
+.badge-advanced     { background: rgba(233,69,96,0.2); color: var(--accent); }
+.badge-bronze       { background: rgba(205,127,50,0.2); color: #cd7f32; }
+.badge-silver       { background: rgba(170,170,170,0.2); color: #aaa; }
+.badge-gold         { background: rgba(245,166,35,0.2); color: var(--accent-2); }
+
+/* ──────────────────────────────────────────────
+   12. TABLES
+────────────────────────────────────────────── */
+.table-responsive {
+  overflow-x: auto;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.data-table caption {
+  caption-side: top;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  text-align: left;
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table thead tr {
+  background: var(--primary);
+  border-bottom: 2px solid var(--accent);
+}
+
+.data-table th {
+  padding: var(--sp-2);
+  text-align: left;
+  font-family: var(--font-heading);
+  font-size: var(--fs-sm);
+  color: var(--white);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+/* Striped rows */
+.data-table tbody tr:nth-child(even) {
+  background: var(--card);
+}
+
+/* Row hover */
+.data-table tbody tr:hover {
+  background: var(--card-hover);
+  outline: 1px solid var(--accent);
+}
+
+.hours-table {
+  font-size: var(--fs-sm);
+}
+
+/* ──────────────────────────────────────────────
+   13. FORMS
+────────────────────────────────────────────── */
+.membership-form,
+.contact-form,
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-lg);
+  padding: var(--sp-3);
+  background: var(--card);
+}
+
+legend {
+  font-family: var(--font-heading);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--accent);
+  padding: 0 var(--sp-1);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+label {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.required { color: var(--accent); }
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="password"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  transition: var(--transition);
+  min-height: 44px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(233,69,96,0.2);
+  background: var(--card);
+}
+
+input:disabled,
+select:disabled,
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23e0e0e0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+/* Radio buttons */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+  padding: var(--sp-2);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+  font-size: var(--fs-sm);
+}
+
+.radio-label:hover {
+  border-color: var(--accent);
+  background: rgba(233,69,96,0.05);
+}
+
+.radio-label input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  min-height: unset;
+}
+
+/* Checkboxes */
+.checkbox-group { }
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  min-height: unset;
+  flex-shrink: 0;
+}
+
+.form-submit {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* ──────────────────────────────────────────────
+   14. FILTER BAR
+────────────────────────────────────────────── */
+.filter-section {
+  padding: var(--sp-3) 0;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.filter-note {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-style: italic;
+}
+
+.filter-placeholder-controls {
+  display: flex;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-placeholder-controls select {
+  min-width: 160px;
+  min-height: 36px;
+  padding: 0.3rem 0.8rem;
+}
+
+/* ──────────────────────────────────────────────
+   15. TRAINER CARDS
+────────────────────────────────────────────── */
+.trainers-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.trainer-card {
+  text-align: center;
+}
+
+.trainer-link {
+  display: block;
+  color: inherit;
+  padding: var(--sp-3);
+}
+
+.trainer-link:hover { color: inherit; }
+
+.trainer-figure {
+  margin: 0 auto var(--sp-2);
+  display: inline-block;
+}
+
+.trainer-photo {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--accent);
+  margin: 0 auto;
+  transition: var(--transition);
+}
+
+.trainer-card:hover .trainer-photo {
+  border-color: var(--accent-2);
+  transform: scale(1.05);
+}
+
+.trainer-name {
+  font-family: var(--font-heading);
+  font-size: var(--fs-lg);
+  color: var(--white);
+  margin-top: var(--sp-1);
+}
+
+.trainer-specialty {
+  color: var(--accent);
+  font-weight: 500;
+  font-size: var(--fs-sm);
+  margin-bottom: 0.3rem;
+}
+
+.trainer-exp {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  margin-bottom: var(--sp-1);
+}
+
+.trainer-bio {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  text-align: left;
+  margin-bottom: var(--sp-1);
+}
+
+.trainer-contact {
+  font-style: normal;
+  margin-bottom: var(--sp-2);
+}
+
+.trainer-contact a {
+  font-size: var(--fs-xs);
+  color: var(--accent);
+}
+
+/* ──────────────────────────────────────────────
+   16. RECRUITMENT BANNER
+────────────────────────────────────────────── */
+.work-with-us {
+  background: linear-gradient(135deg, var(--primary), #0d0d1f);
+}
+
+.recruitment-banner {
+  display: flex;
+  gap: var(--sp-5);
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-xl);
+  overflow: hidden;
+  padding: var(--sp-5);
+}
+
+.recruitment-text {
+  flex: 1;
+}
+
+.recruitment-text h2 {
+  margin-bottom: var(--sp-2);
+}
+
+.recruitment-text p {
+  margin-bottom: var(--sp-3);
+}
+
+.recruitment-img {
+  flex-shrink: 0;
+  margin: 0;
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+}
+
+/* ──────────────────────────────────────────────
+   17. CONTACT PAGE
+────────────────────────────────────────────── */
+.contact-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-5);
+  align-items: start;
+}
+
+.contact-form-col h3,
+.contact-info-col h3 {
+  font-size: var(--fs-xl);
+  margin-bottom: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 2px solid var(--accent);
+}
+
+.contact-form {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-xl);
+  padding: var(--sp-4);
+}
+
+.gym-address {
+  font-style: normal;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.contact-detail {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-start;
+}
+
+.contact-icon {
+  font-size: var(--fs-xl);
+  flex-shrink: 0;
+  width: 40px;
+}
+
+.contact-detail strong {
+  display: block;
+  font-size: var(--fs-sm);
+  margin-bottom: 0.2rem;
+  color: var(--accent);
+}
+
+.contact-detail p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.map-placeholder {
+  position: relative;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-bottom: var(--sp-3);
+  background: var(--card);
+}
+
+.map-placeholder iframe {
+  width: 100%;
+  height: 220px;
+  border: 0;
+  background: var(--card);
+}
+
+.map-note {
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  padding: var(--sp-1);
+  background: var(--bg-alt);
+  margin: 0;
+}
+
+.hours-section h4 {
+  font-size: var(--fs-lg);
+  margin-bottom: var(--sp-2);
+}
+
+/* ──────────────────────────────────────────────
+   18. PAYMENT METHODS
+────────────────────────────────────────────── */
+.payment-section {
+  background: var(--bg-alt);
+  padding: var(--sp-5) 0;
+}
+
+.payment-methods {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.payment-methods figure {
+  text-align: center;
+  margin: 0;
+}
+
+.payment-methods img {
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border);
+  margin-bottom: var(--sp-1);
+  transition: var(--transition);
+}
+
+.payment-methods img:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.payment-methods figcaption {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+#cib-card{
+  zoom:4;
+  height: 50px;
+  width: 80px;;
+}
+
+/* ──────────────────────────────────────────────
+   19. MEMBERSHIP PREVIEW (index.html)
+────────────────────────────────────────────── */
+.membership-preview-section {
+  background: linear-gradient(135deg, #12121f 0%, var(--primary) 100%);
+}
+
+/* ──────────────────────────────────────────────
+   20. ALERTS
+────────────────────────────────────────────── */
+.alert {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--border-radius);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-2);
+}
+
+.alert-error {
+  background: rgba(231,76,60,0.15);
+  border: 1px solid rgba(231,76,60,0.4);
+  color: #e74c3c;
+}
+
+.alert-success {
+  background: rgba(39,174,96,0.15);
+  border: 1px solid rgba(39,174,96,0.4);
+  color: #27ae60;
+}
+
+/* ──────────────────────────────────────────────
+   21. FOOTER
+────────────────────────────────────────────── */
+.site-footer {
+  background: #08080f;
+  border-top: 2px solid var(--accent);
+  padding: var(--sp-6) 0 var(--sp-3);
+}
+
+.footer-grid {
+  display: flex;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+
+.footer-col {
+  flex: 1;
+  min-width: 200px;
+}
+
+.footer-heading {
+  font-size: var(--fs-base);
+  color: var(--white);
+  margin-bottom: var(--sp-2);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.footer-links li,
+.hours-list li {
+  padding: 0.3rem 0;
+}
+
+.footer-links a {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  transition: var(--transition-fast);
+}
+
+.footer-links a:hover {
+  color: var(--accent);
+  padding-left: var(--sp-1);
+}
+
+.social-links {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.social-links a {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  padding: 0.4rem var(--sp-1);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.social-links a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.footer-col address {
+  font-style: normal;
+}
+
+.footer-col address p {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+
+.footer-bottom {
+  text-align: center;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border);
+}
+
+.footer-bottom p {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── 22. STATS STRIP ─────────────────────────────────────── */
+.stats-strip{
+  background:linear-gradient(135deg,var(--accent) 0%,#8b1a2e 100%);
+  padding:var(--sp-4) 0
+}
+.stats-strip-inner{
+  max-width:var(--max-width);margin:0 auto;padding:0 var(--sp-3);
+  display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap
+}
+.stat-pill{
+  display:flex;flex-direction:column;align-items:center;
+  padding:var(--sp-1) var(--sp-5)
+}
+.stat-num{
+  font-family:var(--font-heading);font-size:var(--fs-3xl);
+  font-weight:700;color:var(--white);line-height:1
+}
+.stat-plus{color:rgba(255,255,255,.7);font-size:var(--fs-xl)}
+.stat-lbl{font-size:var(--fs-xs);color:rgba(255,255,255,.75);letter-spacing:.12em;text-transform:uppercase;margin-top:.3rem}
+.stat-sep{width:1px;height:48px;background:rgba(255,255,255,.25);flex-shrink:0}
+
+/* ──────────────────────────────────────────────
+   23. ADMIN LOGIN PAGE
+────────────────────────────────────────────── */
+.admin-body {
+  background: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+.admin-login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+}
+
+.login-main {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-3);
+}
+
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-xl);
+  padding: var(--sp-5) var(--sp-5);
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: var(--sp-4);
+}
+
+.login-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.login-footer-links {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.login-footer-links a {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.login-footer-links a:hover { color: var(--accent); }
+
+/* ──────────────────────────────────────────────
+   24. ADMIN LAYOUT (dashboard, plans, classes)
+────────────────────────────────────────────── */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--admin-bg);
+}
+
+/* SIDEBAR */
+.admin-sidebar {
+  width: var(--sidebar-width);
+  background: var(--admin-sidebar);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 900;
+  overflow-y: auto;
+  box-shadow: 2px 0 12px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-2);
+  background: #161f2c;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+.sidebar-brand {
+  font-family: var(--font-heading);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.05em;
+}
+
+.sidebar-label {
+  background: var(--accent);
+  color: var(--white);
+  font-size: var(--fs-xs);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--border-radius-full);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: var(--sp-2) 0;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem var(--sp-3);
+  color: rgba(255,255,255,0.7);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: var(--transition-fast);
+  border-left: 3px solid transparent;
+}
+
+.sidebar-link:hover {
+  background: var(--admin-sidebar-hover);
+  color: var(--white);
+  border-left-color: var(--accent);
+}
+
+.sidebar-link.active {
+  background: var(--admin-sidebar-hover);
+  color: var(--white);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+.badge-count {
+  background: var(--accent);
+  color: var(--white);
+  font-size: var(--fs-xs);
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--border-radius-full);
+  min-width: 20px;
+  text-align: center;
+}
+
+.sidebar-footer {
+  padding: var(--sp-2) 0;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+.sidebar-logout { color: rgba(231,76,60,0.8) !important; }
+.sidebar-logout:hover { color: #e74c3c !important; background: rgba(231,76,60,0.1) !important; border-left-color: #e74c3c !important; }
+
+/* ADMIN MAIN */
+.admin-main {
+  margin-left: var(--sidebar-width);
+  flex: 1;
+  min-height: 100vh;
+  background: var(--admin-bg);
+  overflow-x: hidden;
+}
+
+/* TOPBAR */
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4);
+  height: 64px;
+  background: var(--admin-card);
+  border-bottom: 1px solid var(--admin-border);
+  position: sticky;
+  top: 0;
+  z-index: 800;
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-page-title {
+  font-size: var(--fs-xl);
+  color: var(--admin-text);
+  flex: 1;
+}
+
+.admin-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.admin-user-info {
+  font-size: var(--fs-sm);
+  color: #5a6a7e;
+  padding: 0.4rem var(--sp-2);
+  background: var(--admin-bg);
+  border-radius: var(--border-radius-full);
+  border: 1px solid var(--admin-border);
+}
+
+.admin-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: var(--fs-xl);
+  cursor: pointer;
+  color: var(--admin-text);
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ADMIN SECTIONS */
+.admin-section {
+  padding: var(--sp-4);
+}
+
+.admin-section-title {
+  font-size: var(--fs-lg);
+  color: var(--admin-text);
+  margin-bottom: var(--sp-3);
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+/* STATS CARDS */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+}
+
+.stat-card {
+  background: var(--admin-card);
+  border-radius: var(--border-radius-lg);
+  padding: var(--sp-3);
+  border-top: 4px solid;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  transition: var(--transition);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+.stat-blue    { border-top-color: #3498db; }
+.stat-green   { border-top-color: #27ae60; }
+.stat-orange  { border-top-color: #f39c12; }
+.stat-red     { border-top-color: #e74c3c; }
+
+.stat-icon {
+  font-size: var(--fs-2xl);
+  flex-shrink: 0;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-number {
+  font-family: var(--font-heading);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--admin-text);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: var(--fs-xs);
+  color: #7f8c8d;
+  margin-top: 0.3rem;
+}
+
+/* ADMIN CARDS */
+.admin-card {
+  background: var(--admin-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.admin-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-3);
+  background: #f8f9fa;
+  border-bottom: 1px solid var(--admin-border);
+  font-weight: 600;
+  color: var(--admin-text);
+  font-size: var(--fs-sm);
+}
+
+/* ADMIN TABLE */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.admin-table thead tr {
+  background: #2c3e50;
+}
+
+.admin-table th {
+  padding: var(--sp-2) var(--sp-2);
+  text-align: left;
+  color: var(--white);
+  font-family: var(--font-heading);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-text);
+}
+
+.admin-table tbody tr:nth-child(even) {
+  background: #f8f9fa;
+}
+
+.admin-table tbody tr:hover {
+  background: #eef2ff;
+}
+
+/* ADMIN FORM */
+.admin-form {
+  padding: var(--sp-4);
+}
+
+.admin-form fieldset {
+  border: 1px solid var(--admin-border);
+  background: transparent;
+}
+
+.admin-form legend {
+  color: var(--admin-accent);
+}
+
+.admin-form input,
+.admin-form select,
+.admin-form textarea {
+  background: var(--white);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text);
+}
+
+.admin-form input:focus,
+.admin-form select:focus,
+.admin-form textarea:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(52,152,219,0.2);
+  background: var(--white);
+}
+
+.admin-form label {
+  color: var(--admin-text);
+}
+
+/* Admin buttons */
+.btn-edit {
+  background: var(--admin-accent);
+  color: var(--white);
+  border: none;
+  border-radius: var(--border-radius);
+}
+
+.btn-edit:hover {
+  background: #2980b9;
+  color: var(--white);
+}
+
+.btn-delete {
+  background: var(--admin-danger);
+  color: var(--white);
+  border: none;
+  border-radius: var(--border-radius);
+}
+
+.btn-delete:hover {
+  background: #c0392b;
+  color: var(--white);
+}
+
+.btn-outline-admin {
+  background: transparent;
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--border-radius-full);
+}
+
+.btn-outline-admin:hover {
+  border-color: var(--admin-accent);
+  color: var(--admin-accent);
+}
+
+
+/* ================================================================
+   RESPONSIVE DESIGN — MOBILE FIRST
+   Breakpoints:
+     Mobile  : < 768px    (default)
+     Tablet  : 768px–1023px
+     Desktop : ≥ 1024px
+================================================================ */
+
+/* ──────────────────────────────────────────────
+   TABLET — 768px and up
+────────────────────────────────────────────── */
+@media (min-width: 768px) {
+
+  h1 { font-size: var(--fs-3xl); }
+  h2 { font-size: var(--fs-2xl); }
+
+  .hero-title { font-size: var(--fs-hero); }
+
+  .cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .trainers-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .plans-grid {
+    flex-wrap: nowrap;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .contact-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footer-grid {
+    flex-wrap: nowrap;
+  }
+  .admin-body input, .admin-body select  
+  { background: white; 
+    border: 1px solid var(--admin-border); 
+    color: var(--admin-text); }
+  .admin-body input:focus
+  { border-color: var(--admin-accent); }
+}
+
+/* ──────────────────────────────────────────────
+   DESKTOP — 1024px and up
+────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+
+  h1 { font-size: var(--fs-4xl); }
+  h2 { font-size: var(--fs-3xl); }
+  h3 { font-size: var(--fs-2xl); }
+
+  .hero-title { font-size: var(--fs-hero); }
+
+  .cards-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .trainers-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .container {
+    padding: 0 var(--sp-4);
+  }
+}
+
+/* ──────────────────────────────────────────────
+   MOBILE ONLY — below 768px
+────────────────────────────────────────────── */
+@media (max-width: 767px) {
+
+  /* Nav */
+  .hamburger {
+    display: flex;
+  }
+
+  .nav-links {
+    display: none;
+    position: absolute;
+    top: var(--navbar-height);
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: rgba(10,10,20,0.98);
+    border-top: 1px solid var(--border);
+    padding: var(--sp-2) 0;
+    z-index: 999;
+    box-shadow: var(--shadow-md);
+  }
+
+  .nav-links.open {
+    display: flex;
+  }
+
+  .nav-link {
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: 0;
+    font-size: var(--fs-base);
+  }
+
+  .nav-admin-btn {
+    margin: var(--sp-1) var(--sp-3);
+    border-radius: var(--border-radius-full);
+  }
+
+  /* Hero */
+  .hero { min-height: 80vh; }
+  .hero-title { font-size: 2.5rem; }
+  .hero-tagline { font-size: var(--fs-lg); }
+  .hero-content .btn { display: block; margin: var(--sp-1) auto; width: fit-content; }
+
+  /* Sections */
+  .section { padding: var(--sp-4) 0; }
+  .cards-grid { grid-template-columns: 1fr; }
+  .trainers-grid { grid-template-columns: 1fr; }
+
+  /* Plans */
+  .plans-grid { flex-direction: column; align-items: center; }
+  .plan-card { max-width: 100%; min-width: unset; width: 100%; }
+  .plan-recommended { transform: none; }
+
+  /* Forms */
+  .form-row { grid-template-columns: 1fr; }
+  .form-submit { flex-direction: column; }
+
+  /* Contact */
+  .contact-layout { grid-template-columns: 1fr; }
+
+  /* Recruitment */
+  .recruitment-banner { flex-direction: column; padding: var(--sp-3); }
+  .recruitment-img { display: none; }
+
+  /* Stats */
+  .stats-grid { grid-template-columns: 1fr; }
+
+  /* Admin sidebar collapses to top on mobile */
+  .admin-sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
+  .sidebar-nav {
+    display: none;
+    width: 100%;
+    background: var(--admin-sidebar);
+  }
+
+  .sidebar-nav.open {
+    display: block;
+  }
+
+  .admin-main {
+    margin-left: 0;
+  }
+
+  .admin-menu-toggle {
+    display: block;
+  }
+
+  .admin-topbar {
+    position: relative;
+  }
+
+  .footer-grid { flex-direction: column; gap: var(--sp-3); }
+  .footer-col { min-width: unset; }
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trainers — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="navbar" aria-label="Main Navigation">
+      <a href="index.html" class="nav-logo" id="namelogo">
+        <span class="logo-icon" >	&#9824;</span> Spade GYM
+      </a>
+      <button class="hamburger" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="classes.html" class="nav-link">Classes</a></li>
+        <li><a href="membership.html" class="nav-link">Membership</a></li>
+        <li><a href="trainers.html" class="nav-link active">Trainers</a></li>
+        <li><a href="contact.html" class="nav-link">Contact</a></li>
+        <li><a href="admin-login.html" class="nav-link nav-admin-btn">Admin</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- PAGE HEADER -->
+    <section class="page-hero" >
+      <div class="container">
+        <h1>Meet Our Trainers</h1>
+        <p>Certified professionals dedicated to helping you achieve your fitness goals.</p>
+      </div>
+    </section>
+
+    <!-- TRAINERS GRID -->
+    <section class="section" >
+      <div class="container">
+        <h2 id="trainers-heading" class="section-title">Our Expert Team</h2>
+        <div class="cards-grid trainers-grid">
+
+          <article class="card trainer-card">
+            <a href="#" class="trainer-link" aria-label="View Sara Benali profile" >
+              <figure class="trainer-figure">
+                <img class="trainer-photo" src="https://placehold.co/200x200/1a1a2e/e94560?text=SB" alt="Sara Benali — Yoga &amp; Pilates" width="200" height="200" />
+                <figcaption class="trainer-name">Sara Benali</figcaption>
+              </figure>
+              <div class="trainer-info">
+                <p class="trainer-specialty">🧘 Yoga &amp; Pilates</p>
+                <p class="trainer-exp">⏱ 8 Years Experience</p>
+                <p class="trainer-bio">Sara is a certified yoga and Pilates instructor passionate about mindful movement and flexibility. She holds certifications from the International Yoga Alliance and has helped over 300 members improve their mobility and mental wellness.</p>
+                <address class="trainer-contact">
+                  <a href="mailto:sara@spadegym.dz">sara@spadegym.dz</a>
+                </address>
+                <span class="btn btn-outline btn-sm">View Profile</span>
+              </div>
+            </a>
+          </article>
+
+          <article class="card trainer-card">
+            <a href="#" class="trainer-link" aria-label="View Karim Mansouri profile" >
+              <figure class="trainer-figure">
+                <img class="trainer-photo" src="https://placehold.co/200x200/1a1a2e/e94560?text=KM" alt="Karim Mansouri — CrossFit &amp; HIIT" width="200" height="200" />
+                <figcaption class="trainer-name">Karim Mansouri</figcaption>
+              </figure>
+              <div class="trainer-info">
+                <p class="trainer-specialty">🏋️ CrossFit &amp; HIIT</p>
+                <p class="trainer-exp">⏱ 10 Years Experience</p>
+                <p class="trainer-bio">Karim is a Level 3 CrossFit coach and HIIT specialist. Former national-level athlete, he combines intense functional training with personalized programming to push members beyond their limits safely and effectively.</p>
+                <address class="trainer-contact">
+                  <a href="mailto:karim@spadegym.dz">karim@spadegym.dz</a>
+                </address>
+                <span class="btn btn-outline btn-sm">View Profile</span>
+              </div>
+            </a>
+          </article>
+
+          <article class="card trainer-card">
+            <a href="#" class="trainer-link" aria-label="View Lina Chouiref profile" >
+              <figure class="trainer-figure">
+                <img class="trainer-photo" src="https://placehold.co/200x200/1a1a2e/e94560?text=LC" alt="Lina Chouiref — Zumba &amp; Spin" width="200" height="200" />
+                <figcaption class="trainer-name">Lina Chouiref</figcaption>
+              </figure>
+              <div class="trainer-info">
+                <p class="trainer-specialty">🎵 Zumba &amp; Spin</p>
+                <p class="trainer-exp">⏱ 6 Years Experience</p>
+                <p class="trainer-bio">Lina brings energy and fun to every session. Certified Zumba instructor and indoor cycling coach, she creates high-energy routines that make cardio feel like a celebration. Her classes are always fully booked!</p>
+                <address class="trainer-contact">
+                  <a href="mailto:lina@spadegym.dz">lina@spadegym.dz</a>
+                </address>
+                <span class="btn btn-outline btn-sm">View Profile</span>
+              </div>
+            </a>
+          </article>
+
+          <article class="card trainer-card">
+            <a href="#" class="trainer-link" aria-label="View Yacine Ferhat profile" >
+              <figure class="trainer-figure">
+                <img class="trainer-photo" src="https://placehold.co/200x200/1a1a2e/e94560?text=YF" alt="Yacine Ferhat — Boxing &amp; Strength" width="200" height="200" />
+                <figcaption class="trainer-name">Yacine Ferhat</figcaption>
+              </figure>
+              <div class="trainer-info">
+                <p class="trainer-specialty">🥊 Boxing &amp; Strength</p>
+                <p class="trainer-exp">⏱ 12 Years Experience</p>
+                <p class="trainer-bio">Yacine is a former professional boxer turned strength and conditioning specialist. He designs programs that build explosive power, coordination, and functional strength. His Boxing Fundamentals class is perfect for all levels.</p>
+                <address class="trainer-contact">
+                  <a href="mailto:yacine@spadegym.dz">yacine@spadegym.dz</a>
+                </address>
+                <span class="btn btn-outline btn-sm">View Profile</span>
+              </div>
+            </a>
+          </article>
+
+          <article class="card trainer-card">
+            <a href="#" class="trainer-link" aria-label="View Amira Khelifi profile" >
+              <figure class="trainer-figure">
+                <img class="trainer-photo" src="https://placehold.co/200x200/1a1a2e/e94560?text=AK" alt="Amira Khelifi — Nutrition &amp; Wellness" width="200" height="200" />
+                <figcaption class="trainer-name">Amira Khelifi</figcaption>
+              </figure>
+              <div class="trainer-info">
+                <p class="trainer-specialty">🥗 Nutrition &amp; Wellness</p>
+                <p class="trainer-exp">⏱ 5 Years Experience</p>
+                <p class="trainer-bio">Amira holds a degree in Sports Nutrition and is a certified wellness coach. She works with Gold members to design personalized nutrition plans that complement their training programs and accelerate their results.</p>
+                <address class="trainer-contact">
+                  <a href="mailto:amira@spadegym.dz">amira@spadegym.dz</a>
+                </address>
+                <span class="btn btn-outline btn-sm">View Profile</span>
+              </div>
+            </a>
+          </article>
+
+          <article class="card trainer-card">
+            <a href="#" class="trainer-link" aria-label="View Bilal Tabet profile">
+              <figure class="trainer-figure">
+                <img class="trainer-photo" src="https://placehold.co/200x200/1a1a2e/e94560?text=BT" alt="Bilal Tabet — Aqua Fitness" width="200" height="200" />
+                <figcaption class="trainer-name">Bilal Tabet</figcaption>
+              </figure>
+              <div class="trainer-info">
+                <p class="trainer-specialty">🏊 Aqua Fitness</p>
+                <p class="trainer-exp">⏱ 7 Years Experience</p>
+                <p class="trainer-bio">Bilal is a certified swim coach and aqua aerobics instructor. Specializing in low-impact exercise, his water-based sessions are ideal for rehabilitation, seniors, and anyone seeking joint-friendly cardio workouts.</p>
+                <address class="trainer-contact">
+                  <a href="mailto:bilal@spadegym.dz">bilal@spadegym.dz</a>
+                </address>
+                <span class="btn btn-outline btn-sm">View Profile</span>
+              </div>
+            </a>
+          </article>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- WORK WITH US SECTION -->
+    <section class="section work-with-us" aria-labelledby="recruitment-heading">
+      <div class="container">
+        <div class="recruitment-banner">
+          <div class="recruitment-text">
+            <h2 id="recruitment-heading">🏆 Work With Us</h2>
+            <p>Are you a certified fitness professional passionate about changing lives? IronPeak Gym is always looking for talented trainers to join our growing team.</p>
+            <ul class="feature-list">
+              <li>Competitive salary &amp; commissions</li>
+              <li>Flexible scheduling</li>
+              <li>Access to all gym facilities</li>
+              <li>Continuing education support</li>
+            </ul>
+            <a href="contact.html" class="btn btn-accent">Apply Now</a>
+          </div>
+          <figure class="recruitment-img">
+            <img src="https://placehold.co/400x300/1a1a2e/f5a623?text=Join+Our+Team" alt="Join the IronPeak training team" width="400" height="300" />
+          </figure>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h4 class="footer-heading"><span class="logo-icon" id="footer-logo">	&#9824;</span> Spade GYM</h4>
+          <p>Train hard. Live strong.</p>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="classes.html">Classes</a></li>
+            <li><a href="membership.html">Membership</a></li>
+            <li><a href="contact.html">Contact</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4 class="footer-heading">Contact</h4>
+          <address>
+            <p>📍 12 Rue des Athlètes, Constantine, Algeria</p>
+            <p>📞 +213 55 66 79 40</p>
+            <p>✉️ contact@spadegym.dz</p>
+          </address>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Spade GYM. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+    <script src="nav.js"></script>
+    <script src="search-train.js"></script>
+
+
+</body>
+</html>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── GRAB ELEMENTS ──────────────────────────────────────────
+  const form       = document.querySelector('.membership-form');
+  const fullName   = document.getElementById('full-name');
+  const email      = document.getElementById('email');
+  const phone      = document.getElementById('phone');
+  const dob        = document.getElementById('dob');
+  const planRadios = document.querySelectorAll('input[type="radio"]');
+  const termsBox   = document.getElementById('terms');
+
+  // ── HELPERS ────────────────────────────────────────────────
+  function showError(input, msg) {
+    removeError(input);
+    input.style.border = '2px solid #e94560';
+    const span = document.createElement('span');
+    span.className = 'field-error';
+    span.textContent = msg;
+    span.style.cssText = 'color:#e94560; font-size:0.8rem; margin-top:4px; display:block;';
+    input.parentNode.appendChild(span);
+  }
+
+  function showSuccess(input) {
+    removeError(input);
+    input.style.border = '2px solid #22c55e';
+  }
+
+  function removeError(input) {
+    input.style.border = '';
+    const old = input.parentNode.querySelector('.field-error');
+    if (old) old.remove();
+  }
+
+  // ── VALIDATION ─────────────────────────────────────────────
+  function checkName() {
+    const val = fullName.value.trim();
+    if (!val || !/^[A-Za-z\u00C0-\u017E\s]{3,}$/.test(val)) {
+      showError(fullName, 'Full name required — letters only, min 3 characters.');
+      return false;
+    }
+    showSuccess(fullName);
+    return true;
+  }
+
+  function checkEmail() {
+    const val = email.value.trim();
+    if (!val || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      showError(email, 'Please enter a valid email address.');
+      return false;
+    }
+    showSuccess(email);
+    return true;
+  }
+
+  function checkPhone() {
+    const val = phone.value.trim();
+    if (!val || !/^\+?[0-9\s\-]{8,15}$/.test(val)) {
+      showError(phone, 'Phone must be 8-15 digits.');
+      return false;
+    }
+    showSuccess(phone);
+    return true;
+  }
+
+  function checkDOB() {
+    const val = dob.value;
+    if (!val) { showError(dob, 'Date of birth is required.'); return false; }
+    const today = new Date(), birth = new Date(val);
+    let age = today.getFullYear() - birth.getFullYear();
+    if (today.getMonth() < birth.getMonth() ||
+       (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--;
+    if (age < 16) { showError(dob, 'You must be at least 16 years old.'); return false; }
+    showSuccess(dob);
+    return true;
+  }
+
+  function checkPlan() {
+    const group = document.querySelector('.radio-group');
+    const old   = group.querySelector('.field-error');
+    if ([...planRadios].some(r => r.checked)) { if (old) old.remove(); return true; }
+    if (!old) {
+      const span = document.createElement('span');
+      span.className = 'field-error';
+      span.textContent = 'Please select a membership plan.';
+      span.style.cssText = 'color:#e94560; font-size:0.8rem; margin-top:4px; display:block;';
+      group.appendChild(span);
+    }
+    return false;
+  }
+
+  function checkTerms() {
+    const group = termsBox.parentNode.parentNode;
+    const old   = group.querySelector('.field-error');
+    if (termsBox.checked) { if (old) old.remove(); return true; }
+    if (!old) {
+      const span = document.createElement('span');
+      span.className = 'field-error';
+      span.textContent = 'You must accept the Terms & Conditions.';
+      span.style.cssText = 'color:#e94560; font-size:0.8rem; margin-top:4px; display:block;';
+      group.appendChild(span);
+    }
+    return false;
+  }
+
+  // ── SUBMIT ─────────────────────────────────────────────────
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const ok = checkName() & checkEmail() & checkPhone() & checkDOB() & checkPlan() & checkTerms();
+    if (ok) showModal();
+  });
+
+  // ── SUCCESS MODAL ──────────────────────────────────────────
+  function showModal() {
+    const overlay = document.createElement('div');
+    overlay.id = 'success-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;';
+
+    overlay.innerHTML = `
+      <div style="background: #141238; border:2px solid #22c55e;border-radius:16px;padding:2.5rem;max-width:420px;width:90%;text-align:center;">
+        
+        <h2 style="color:#22c55e;font-family:'Oswald',sans-serif;margin-bottom:0.5rem;">Registration Successful!</h2>
+        <p style="color:#a4a6d3; margin-bottom:1.5rem;">Welcome to Spade GYM! Our team will contact you within 24 hours.</p>
+        <button id="close-modal" style="background:#e0083a;color:#fff;border:none;padding:0.7rem 2rem;border-radius:999px;font-family:'Oswald',sans-serif;font-size:1rem;cursor:pointer;text-transform:uppercase;">Close</button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById('close-modal').addEventListener('click', function () {
+      document.getElementById('success-overlay').remove(); // removes the dark overlay completely
+      form.reset();                                         // clears all form fields
+      [fullName, email, phone, dob].forEach(removeError);  // removes green borders
+    });
+  }
+
+});
