@@ -1,0 +1,420 @@
+/* ──────────────────────────────────────────────
+   22. ADMIN LOGIN PAGE
+────────────────────────────────────────────── */
+.admin-body {
+  background: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+.admin-login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+}
+
+.login-main {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-3);
+}
+
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--border-radius-xl);
+  padding: var(--sp-5) var(--sp-5);
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: var(--sp-4);
+}
+
+.login-subtitle {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+
+.login-footer-links {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.login-footer-links a {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.login-footer-links a:hover { color: var(--accent); }
+
+/* ──────────────────────────────────────────────
+   23. ADMIN LAYOUT (dashboard, plans)
+────────────────────────────────────────────── */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--admin-bg);
+}
+
+/* SIDEBAR */
+.admin-sidebar {
+  width: var(--sidebar-width);
+  background: var(--admin-sidebar);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 900;
+  overflow-y: auto;
+  box-shadow: 2px 0 12px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-2);
+  background: #161f2c;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+.sidebar-brand {
+  font-family: var(--font-heading);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.05em;
+}
+
+.sidebar-label {
+  background: var(--accent);
+  color: var(--white);
+  font-size: var(--fs-xs);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--border-radius-full);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: var(--sp-2) 0;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem var(--sp-3);
+  color: rgba(255,255,255,0.7);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: var(--transition-fast);
+  border-left: 3px solid transparent;
+}
+
+.sidebar-link:hover {
+  background: var(--admin-sidebar-hover);
+  color: var(--white);
+  border-left-color: var(--accent);
+}
+
+.sidebar-link.active {
+  background: var(--admin-sidebar-hover);
+  color: var(--white);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+.badge-count {
+  background: var(--accent);
+  color: var(--white);
+  font-size: var(--fs-xs);
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--border-radius-full);
+  min-width: 20px;
+  text-align: center;
+}
+
+.sidebar-footer {
+  padding: var(--sp-2) 0;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+}
+
+.sidebar-logout { color: rgba(231,76,60,0.8) !important; }
+.sidebar-logout:hover { color: #e74c3c !important; background: rgba(231,76,60,0.1) !important; border-left-color: #e74c3c !important; }
+
+/* ADMIN MAIN */
+.admin-main {
+  margin-left: var(--sidebar-width);
+  flex: 1;
+  min-height: 100vh;
+  background: var(--admin-bg);
+  overflow-x: hidden;
+}
+
+/* TOPBAR */
+.admin-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4);
+  height: 64px;
+  background: var(--admin-card);
+  border-bottom: 1px solid var(--admin-border);
+  position: sticky;
+  top: 0;
+  z-index: 800;
+  box-shadow: var(--shadow-sm);
+}
+
+.admin-page-title {
+  font-size: var(--fs-xl);
+  color: var(--admin-text);
+  flex: 1;
+}
+
+.admin-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.admin-user-info {
+  font-size: var(--fs-sm);
+  color: #5a6a7e;
+  padding: 0.4rem var(--sp-2);
+  background: var(--admin-bg);
+  border-radius: var(--border-radius-full);
+  border: 1px solid var(--admin-border);
+}
+
+.admin-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: var(--fs-xl);
+  cursor: pointer;
+  color: var(--admin-text);
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ADMIN SECTIONS */
+.admin-section {
+  padding: var(--sp-4);
+}
+
+.admin-section-title {
+  font-size: var(--fs-lg);
+  color: var(--admin-text);
+  margin-bottom: var(--sp-3);
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+/* STATS CARDS */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+}
+
+.stat-card {
+  background: var(--admin-card);
+  border-radius: var(--border-radius-lg);
+  padding: var(--sp-3);
+  border-top: 4px solid;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  transition: var(--transition);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+.stat-blue    { border-top-color: #3498db; }
+.stat-green   { border-top-color: #27ae60; }
+.stat-orange  { border-top-color: #f39c12; }
+.stat-red     { border-top-color: #e74c3c; }
+
+.stat-icon {
+  font-size: var(--fs-2xl);
+  flex-shrink: 0;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-number {
+  font-family: var(--font-heading);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  color: var(--admin-text);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: var(--fs-xs);
+  color: #7f8c8d;
+  margin-top: 0.3rem;
+}
+
+/* ADMIN CARDS */
+.admin-card {
+  background: var(--admin-card);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.admin-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-3);
+  background: #f8f9fa;
+  border-bottom: 1px solid var(--admin-border);
+  font-weight: 600;
+  color: var(--admin-text);
+  font-size: var(--fs-sm);
+}
+
+/* ADMIN TABLE */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.admin-table thead tr {
+  background: #2c3e50;
+}
+
+.admin-table th {
+  padding: var(--sp-2) var(--sp-2);
+  text-align: left;
+  color: var(--white);
+  font-family: var(--font-heading);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-table td {
+  padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-text);
+}
+
+.admin-table tbody tr:nth-child(even) {
+  background: #f8f9fa;
+}
+
+.admin-table tbody tr:hover {
+  background: #eef2ff;
+}
+
+/* ADMIN FORM */
+.admin-form {
+  padding: var(--sp-4);
+}
+
+.admin-form fieldset {
+  border: 1px solid var(--admin-border);
+  background: transparent;
+}
+
+.admin-form legend {
+  color: var(--admin-accent);
+}
+
+.admin-form input,
+.admin-form select,
+.admin-form textarea {
+  background: var(--white);
+  border: 1px solid var(--admin-border);
+  color: var(--admin-text);
+}
+
+.admin-form input:focus,
+.admin-form select:focus,
+.admin-form textarea:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(52,152,219,0.2);
+  background: var(--white);
+}
+
+.admin-form label {
+  color: var(--admin-text);
+}
+
+/* Admin buttons */
+.btn-edit {
+  background: var(--admin-accent);
+  color: var(--white);
+  border: none;
+  border-radius: var(--border-radius);
+}
+
+.btn-edit:hover {
+  background: #2980b9;
+  color: var(--white);
+}
+
+.btn-delete {
+  background: var(--admin-danger);
+  color: var(--white);
+  border: none;
+  border-radius: var(--border-radius);
+}
+
+.btn-delete:hover {
+  background: #c0392b;
+  color: var(--white);
+}
+
+.btn-outline-admin {
+  background: transparent;
+  color: var(--admin-text);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--border-radius-full);
+}
+
+.btn-outline-admin:hover {
+  border-color: var(--admin-accent);
+  color: var(--admin-accent);
+}

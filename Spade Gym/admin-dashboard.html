@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-body">
+
+  <div class="admin-layout">
+
+    <!-- ====== ADMIN SIDEBAR ====== -->
+    <aside class="admin-sidebar" aria-label="Admin Sidebar Navigation">
+      <div class="sidebar-header">
+        <span class="logo-icon">&#9824;</span>
+        <span class="sidebar-brand">Spade GYM</span>
+        <span class="sidebar-label">Admin</span>
+      </div>
+
+      <nav aria-label="Admin Navigation">
+        <ul class="sidebar-nav">
+          <li><a href="admin-dashboard.html" class="sidebar-link active">🏠 Dashboard</a></li>
+          <li><a href="admin-member.html" class="sidebar-link">👥 Members</a></li>
+          <li><a href="admin-classes.html" class="sidebar-link">📅 Classes</a></li>
+          <li><a href="#" class="sidebar-link">💳 Subscriptions</a></li>
+          <li><a href="admin-plans.html" class="sidebar-link">📋 Plans</a></li>
+          <li><a href="#" class="sidebar-link">🏋️ Trainers</a></li>
+          <li><a href="#" class="sidebar-link">✉️ Messages <span class="badge-count">12</span></a></li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="index.html" class="sidebar-link">🌐 View Site</a>
+        <a href="admin-login.html" class="sidebar-link sidebar-logout">🚪 Logout</a>
+      </div>
+    </aside>
+
+    <!-- ====== ADMIN MAIN CONTENT ====== -->
+    <main class="admin-main" >
+
+      <!-- TOP BAR -->
+      <header class="admin-topbar">
+        <button class="admin-menu-toggle" aria-label="Toggle sidebar">☰</button>
+        <h1 class="admin-page-title">Dashboard</h1>
+        <div class="admin-topbar-right">
+          <span class="admin-user-info">👤 Admin — superadmin</span>
+        </div>
+      </header>
+
+      <!-- STATS CARDS -->
+      <section class="admin-section" aria-labelledby="stats-heading">
+        <h2 id="stats-heading" class="admin-section-title">Overview</h2>
+        <div class="stats-grid">
+
+          <div class="stat-card stat-blue">
+            <div class="stat-icon">👥</div>
+            <div class="stat-info">
+              <span class="stat-number">148</span>
+              <span >Total Members</span>
+            </div>
+          </div>
+
+          <div class="stat-card stat-green">
+            <div class="stat-icon">💳</div>
+            <div class="stat-info">
+              <span class="stat-number">86</span>
+              <span class="stat-label">Active Subscriptions</span>
+            </div>
+          </div>
+
+          <div class="stat-card stat-orange">
+            <div class="stat-icon">📅</div>
+            <div class="stat-info">
+              <span class="stat-number">7</span>
+              <span class="stat-label">Classes Today</span>
+            </div>
+          </div>
+
+          <div class="stat-card stat-red">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <span class="stat-number">212,500</span>
+              <span class="stat-label">Revenue This Month (DZD)</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- RECENT REGISTRATIONS TABLE -->
+      <section class="admin-section" aria-labelledby="recent-heading">
+        <h2 id="recent-heading" class="admin-section-title">Recent Registrations</h2>
+        <div class="admin-card">
+          <div class="admin-card-header">
+            <span>Last 5 New Members</span>
+            <a href="admin-member.html" class="btn btn-sm btn-outline-admin">View All</a>
+          </div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <caption class="sr-only">Recent member registrations</caption>
+              <thead>
+                <tr>
+                  <th ></th>
+                  <th >Full Name</th>
+                  <th >Email</th>
+                  <th >Plan</th>
+                  <th >Join Date</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      
+      const members = JSON.parse(localStorage.getItem('gym_members') || 'null') || seed;
+      const last5   = [...members].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+      const tbody   = document.getElementById('dashboard-tbody');
+      tbody.innerHTML = last5.map((m, i) => `<tr>
+        <td>${i + 1}</td>
+        <td>${m.name}</td>
+        <td>${m.email}</td>
+        <td><span class="badge badge-${m.plan.toLowerCase()}">${m.plan}</span></td>
+        <td>${m.date}</td>
+      </tr>`).join('');
+    })();
+  </script>
+
+    <script src="admin-stats.js"></script>
+
+
+</body>
+</html>
