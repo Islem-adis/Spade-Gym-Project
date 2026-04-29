@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login — Spade Gym</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="admin-body admin-login-page">
+
+  <main class="login-main">
+    <div class="login-card">
+
+      <!-- LOGO -->
+      <div class="login-logo">
+        <a href="index.html" class="nav-logo">
+          <span class="logo-icon">	&#9824;</span> Spade GYM
+        </a>
+        <p class="login-subtitle">Admin Control Panel</p>
+      </div>
+
+      <!-- ERROR MESSAGE PLACEHOLDER -->
+      <div class="alert alert-error" id="login-error" role="alert" aria-live="polite" hidden>
+        ❌ Invalid username or password. Please try again.
+      </div>
+
+      <!-- SUCCESS MESSAGE PLACEHOLDER -->
+      <div class="alert alert-success" id="login-success" role="alert" aria-live="polite" hidden>
+        ✅ Login successful. Redirecting...
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form class="login-form" action="admin-dashboard.html" method="POST" novalidate>
+
+        <div class="form-group">
+          <label for="admin-username">Username</label>
+          <input
+            type="text"
+            id="admin-username"
+            name="username"
+            placeholder="Enter admin username"
+            required
+            autofocus
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="admin-password">Password</label>
+          <input
+            type="password"
+            id="admin-password"
+            name="password"
+            placeholder="Enter your password"
+            required
+            autocomplete="current-password"
+          />
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remember" id="remember" />
+            <span class="checkbox-custom"></span>
+            Remember me
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-accent btn-full btn-lg">Login to Dashboard</button>
+
+      </form>
+
+      <div class="login-footer-links">
+        <a href="index.html">← Return to Main Site</a>
+        <a href="#">Forgot Password?</a>
+      </div>
+
+    </div>
+  </main>
+
+</body>
+</html>
